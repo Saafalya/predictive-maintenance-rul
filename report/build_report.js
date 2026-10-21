@@ -8,6 +8,14 @@ const {
 } = require('docx');
 
 const img = (f) => fs.readFileSync(f);
+
+// Real experiment output from code/run_experiments.py.
+const R = JSON.parse(fs.readFileSync('../results/results.json', 'utf8'));
+const MODEL_ORDER = ['Linear Regression', 'Random Forest', '1D-CNN', 'LSTM', 'CNN-LSTM + Attention'];
+const fmt = (x, d) => x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const pm = (m, sd, d) => sd > 0 ? `${fmt(m, d)} \u00B1 ${fmt(sd, d)}` : fmt(m, d);
+const ms = (sub, m, k, d) => pm(R.main[sub][m][`${k}_mean`], R.main[sub][m][`${k}_std`], d);
+const kparams = (m) => { const p = R.main.FD001[m].params; return p == null ? '-' : `${(p / 1000).toFixed(1)} K`; };
 const FONT = 'Times New Roman';
 const TITLE = 'AI-Based Predictive Maintenance Using Multivariate Sensor Data';
 const SUBTITLE = 'Deep Learning-Based Remaining Useful Life Estimation of Turbofan Engines on NASA C-MAPSS';
@@ -109,10 +117,7 @@ const titleBlock = [
          author('Ribhav Dhankani', 'ribhav.dhankani.btech2024@sitpune.edu.in'), 5040),
   new Paragraph({ spacing: { before: 300, after: 120, line: 240 }, alignment: AlignmentType.JUSTIFIED, children: [
     run('Abstract: ', { bold: true, size: 18 }),
-    run('Unplanned equipment failure is one of the largest sources of downtime and safety risk in aviation, manufacturing and energy systems. Predictive maintenance (PdM) replaces fixed service intervals with decisions based on the measured health of a machine, and its central quantity is the Remaining Useful Life (RUL): the number of operating cycles left before failure. This report presents a deep learning pipeline that estimates RUL directly from multivariate time-series sensor data, evaluated on the NASA C-MAPSS turbofan engine benchmark. Raw sensor streams are filtered to the informative channels, normalised per operating condition, labelled with a piece-wise linear RUL target capped at 125 cycles and converted into 30-cycle sliding windows. Under one shared pipeline we compare two classical baselines (Linear Regression and Random Forest) with three deep models: a 1D Convolutional Neural Network (1D-CNN), a stacked Long Short-Term Memory (LSTM) network, and a hybrid CNN-LSTM with temporal attention. Models are scored with Root Mean Squared Error (RMSE) and the asymmetric PHM08 score, which penalises late predictions more than early ones. On FD001 the CNN-LSTM with attention achieves the lowest error, with an RMSE of ', { size: 18 }),
-    run('12.9', { size: 18, ph: true }), run(' cycles and a PHM08 score of ', { size: 18 }), run('271', { size: 18, ph: true }),
-    run(', against ', { size: 18 }), run('17.6', { size: 18, ph: true }),
-    run(' for the Random Forest baseline. Qualitative analysis of prediction trajectories and attention weights shows that the sequence models track the onset of degradation and concentrate on the most recent cycles of each window, supporting their use for maintenance scheduling.', { size: 18 }),
+    run('Unplanned equipment failure is one of the largest sources of downtime and safety risk in aviation, manufacturing and energy systems. Predictive maintenance (PdM) replaces fixed service intervals with decisions based on the measured health of a machine, and its central quantity is the Remaining Useful Life (RUL): the number of operating cycles left before failure. This report presents a deep learning pipeline that estimates RUL directly from multivariate time-series sensor data, evaluated on the NASA C-MAPSS turbofan engine benchmark. Raw sensor streams are filtered to 14 informative channels, min-max normalised, labelled with a piece-wise linear RUL target capped at 125 cycles and converted into 30-cycle sliding windows. Under one shared pipeline we compare two classical baselines (Linear Regression and Random Forest) with three deep models: a 1D Convolutional Neural Network (1D-CNN), a stacked Long Short-Term Memory (LSTM) network, and a hybrid CNN-LSTM with additive temporal attention. Models are scored with Root Mean Squared Error (RMSE) and the asymmetric PHM08 score, which penalises late predictions more than early ones, averaged over five seeds. The CNN-LSTM with attention achieves the lowest RMSE on both subsets studied: 13.37 cycles on FD001 and 11.88 on FD003, against 14.99 and 16.26 for the best classical baseline. The plain LSTM, however, obtains the best PHM08 score on both subsets, and on FD001 the gap between the two recurrent models is within seed-to-seed variation. An ablation shows that the RUL cap affects error as much as the choice of architecture, and attention analysis shows that the model places 76% of its weight on the most recent cycle of each window.', { size: 18 }),
   ] }),
   new Paragraph({ spacing: { after: 120, line: 240 }, alignment: AlignmentType.JUSTIFIED, children: [
     run('Index Terms: ', { bold: true, size: 18 }),
@@ -198,20 +203,21 @@ const method = [
   dash([{ b: 'Validation split. ' }, '20% of training engines, split by engine ID so that no engine appears in both sets, are held out for early stopping and tuning.']),
   subHead('D. Model Architectures'),
   ...body(
-    [{ b: 'Baselines. ' }, 'Linear Regression and a Random Forest Regressor (200 trees) are trained on flattened windows, giving a reference point without temporal modelling.'],
-    [{ b: '1D-CNN. ' }, 'Two Conv1D layers (64 filters, kernel sizes 5 and 3, ReLU) extract local patterns across time and sensors, followed by global average pooling, a 64-unit dense layer, dropout of 0.3 and a single linear output.'],
+    [{ b: 'Baselines. ' }, 'Linear Regression and a Random Forest Regressor (200 trees, minimum 5 samples per leaf) are trained on flattened windows, giving a reference point without temporal modelling.'],
+    [{ b: '1D-CNN. ' }, 'Two Conv1D layers (64 filters, kernel sizes 5 and 3, ReLU) extract local patterns across time and sensors, whose output is flattened (keeping the position of each time step) and passed to a 64-unit dense layer, dropout of 0.3 and a single linear output.'],
     [{ b: 'LSTM. ' }, 'Two stacked LSTM layers with 64 and 32 units model the degradation trend over the window, followed by dropout of 0.2, a 32-unit dense layer and a linear output.'],
     [{ b: 'Proposed CNN-LSTM with attention. ' }, 'A Conv1D block (64 filters, kernel 3) first extracts local features at each time step. An LSTM layer (64 units, returning the full sequence) encodes temporal dependencies. A Bahdanau-style additive attention layer then computes a weight for each of the 30 time steps and forms a context vector as their weighted sum, which a dense regression head maps to the RUL estimate. The attention weights also make the model\'s focus inspectable.'],
   ),
   subHead('E. Training Setup'),
-  ...body('All deep models are trained with the settings in Table III. Each configuration is trained with five random seeds and we report the mean and standard deviation.'),
+  ...body('All deep models are trained with the settings in Table III. Each configuration is trained with five random seeds (model initialisation and batch order) on a fixed engine-level train/validation split, and we report the mean and standard deviation. Linear Regression is deterministic, so it is run once.'),
   ...tableCaption('Training Hyperparameters'),
   ...table(['Parameter', 'Value'], [
-    ['Framework', 'Python 3, TensorFlow / Keras, scikit-learn'],
-    ['Loss function', 'Mean Squared Error'],
+    ['Framework', 'Python 3, PyTorch, scikit-learn'],
+    ['Hardware', '4-core CPU, no GPU'],
+    ['Loss function', 'Mean Squared Error on RUL / 125 (target scaled to [0, 1])'],
     ['Optimiser', 'Adam [12], learning rate 1e-3'],
-    ['Batch size / max epochs', '256 / 100'],
-    ['Early stopping', 'Patience 10 on validation RMSE'],
+    ['Batch size / max epochs', '256 / 150'],
+    ['Early stopping', 'Patience 20 on validation MSE, best weights restored'],
     ['Window length / RUL cap', '30 cycles / 125 cycles'],
     ['Seeds per configuration', '5'],
   ], [4000, 6080]),
@@ -226,44 +232,39 @@ const method = [
 const results = [
   sectionHead('IV. Results and Discussion'),
   subHead('A. Quantitative Results'),
-  ...body('Table IV reports test-set performance on FD001 and FD003, averaged over five seeds.'),
+  ...body('Table IV reports test-set performance on FD001 and FD003. Deep models and the Random Forest are averaged over five seeds; Linear Regression is deterministic and run once. Params is the number of trainable parameters.'),
   ...tableCaption('Comparative Results on the Test Set (mean ± std over 5 seeds)'),
-  ...table(['Model', 'RMSE FD001', 'Score FD001', 'RMSE FD003', 'Score FD003', 'Params'], [
-    ['Linear Regression', '31.9', '9,820', '33.4', '11,450', '0.4 K'],
-    ['Random Forest', '17.6 ± 0.3', '512 ± 21', '19.2 ± 0.4', '684 ± 30', '-'],
-    ['1D-CNN', '15.1 ± 0.6', '388 ± 34', '15.9 ± 0.7', '441 ± 39', '41 K'],
-    ['LSTM', '13.8 ± 0.5', '312 ± 28', '14.6 ± 0.6', '365 ± 31', '33 K'],
-    ['CNN-LSTM + Attention', '12.9 ± 0.4', '271 ± 22', '13.7 ± 0.5', '318 ± 26', '52 K'],
-  ], [2580, 1500, 1500, 1500, 1500, 1500], [1, 2, 3, 4, 5]),
+  ...table(['Model', 'RMSE FD001', 'Score FD001', 'RMSE FD003', 'Score FD003', 'Params'],
+    MODEL_ORDER.map(m => [m, ms('FD001', m, 'rmse', 2), ms('FD001', m, 'score', 0), ms('FD003', m, 'rmse', 2), ms('FD003', m, 'score', 0), kparams(m)]),
+    [2580, 1500, 1500, 1500, 1500, 1500]),
   ...body(
-    ['All deep models clearly outperform both baselines. Linear Regression cannot model the non-linear degradation curve and has by far the highest error. The Random Forest is a much stronger baseline, but because it treats a flattened window as a set of independent features it cannot exploit temporal order. The LSTM improves on the 1D-CNN, which suggests that the long-range trend matters more than local patterns. The proposed CNN-LSTM with attention achieves the best result on both subsets, lowering RMSE on FD001 by ', { ph: '26.7%' }, ' relative to the Random Forest and by ', { ph: '6.5%' }, ' relative to the plain LSTM. The gap is slightly larger on the PHM08 score, which shows that the hybrid model in particular reduces the costly late predictions.'],
-    'All models perform worse on FD003 than on FD001, as expected, because two fault modes produce more varied degradation patterns. The ranking of the models stays the same on both subsets.',
+    'All three deep models outperform both classical baselines on RMSE. The proposed CNN-LSTM with attention has the lowest RMSE on both subsets: 13.37 ± 0.35 on FD001 and 11.88 ± 0.70 on FD003. This is 10.8% and 26.9% lower than Linear Regression, the stronger of the two baselines, and 2.0% and 3.9% lower than the plain LSTM.',
+    'Two results differ from what we expected. First, Linear Regression beats the Random Forest on both subsets (14.99 against 15.91 on FD001). A likely reason is that the flattened input has 420 strongly correlated features, which suits a linear model, while tree ensembles predict averages of training targets and tend to pull extreme RUL values towards the middle. Second, the plain LSTM, not the proposed model, has the best PHM08 score on both subsets (305 on FD001 and 261 on FD003). Since PHM08 punishes late predictions exponentially, this means the LSTM makes fewer large late errors even though its average error is slightly higher. On FD001 the RMSE gap between the two recurrent models (0.27 cycles) is smaller than the LSTM\'s own seed-to-seed standard deviation (0.52), so the two should be regarded as comparable there; on FD003 the gap is larger.',
+    'The advantage of the deep models is larger on FD003, which contains two fault modes. Linear Regression and the Random Forest lose 1.3 to 1.5 cycles of RMSE from FD001 to FD003, while the recurrent models improve, suggesting that sequence models cope better with more varied degradation patterns. FD003 also has more training windows (17,273 against 13,980), which benefits the larger models.',
   ),
   subHead('B. Ablation Study'),
-  ...body('Table V varies the window length and RUL cap for the proposed model on FD001 while keeping all other settings fixed.'),
+  ...body('Table V varies the window length and RUL cap for the proposed model on FD001 while keeping all other settings fixed (mean ± std over three seeds). To keep rows comparable, every setting is scored against the same target, the true RUL capped at 125 cycles.'),
   ...tableCaption('Effect of Window Length and RUL Cap (CNN-LSTM + Attention, FD001)'),
-  ...table(['Window Length', 'RUL Cap', 'RMSE', 'Score'], [
-    ['20', '125', '14.2', '335'],
-    ['30', '125', '12.9', '271'],
-    ['40', '125', '13.1', '279'],
-    ['30', '115', '13.4', '290'],
-    ['30', '130', '13.2', '284'],
-    ['30', 'none', '19.8', '1,140'],
-  ], [2520, 2520, 2520, 2520], [2, 3]),
+  ...table(['Window Length', 'RUL Cap', 'RMSE', 'Score'],
+    R.ablation.map(r => [String(r.window), r.cap === null ? 'none' : String(r.cap), pm(r.rmse_mean, r.rmse_std, 2), pm(r.score_mean, r.score_std, 0)]),
+    [2520, 2520, 2520, 2520]),
   ...body(
-    ['A 30-cycle window gives the best trade-off: shorter windows hold too little trend information, while longer windows add little and reduce the number of training samples for short-lived engines. Removing the RUL cap degrades performance sharply (RMSE ', { ph: '19.8' }, '), confirming that a linear target over the whole life forces the model to predict differences it cannot observe in the healthy phase.'],
+    'A 20-cycle window is clearly too short (RMSE 15.96), while 30 and 40 cycles perform almost identically (13.31 and 13.49), so 30 cycles is a sufficient history. The RUL cap matters more. Training without a cap is by far the worst setting (RMSE 28.30): the model learns to predict values well above 125 for healthy engines, which it cannot justify from sensor data. A cap of 115 gives a lower error than 125 (12.66 against 13.31), and 130 a higher one (14.58). Part of this effect comes from scoring every row against the cap-125 target, which favours models whose predictions stay below 125. We keep 125 as the main setting because it was fixed in advance following the literature, and choosing it from test results would bias the comparison in Table IV.',
   ),
   subHead('C. Qualitative Results'),
-  ...body('Fig. 2 compares predicted and actual RUL for all 100 FD001 test engines, sorted by actual RUL. Predictions follow the actual values closely across the range, with the largest spread for engines with high RUL, where the engine still looks healthy and little degradation signal is present.'),
-  ...figure('fig_pred_vs_actual.png', 560, 266, 'Predicted versus actual RUL for the FD001 test engines (CNN-LSTM with attention), sorted by actual RUL.'),
-  ...body('Fig. 3 follows a single test engine over its full life. The prediction stays near the 125-cycle cap during the healthy phase and then tracks the linear decline once degradation begins. Early in the decline the model tends to under-estimate RUL slightly, which is the safe direction for maintenance planning.'),
-  ...figure('fig_engine_trajectory.png', 560, 266, 'RUL prediction over the life of one FD001 test engine. The model follows the knee point where degradation becomes visible.'),
-  ...body('Fig. 4 shows training and validation loss for the proposed model. Both curves converge smoothly, and early stopping ends training before the validation loss starts to rise, indicating no significant over-fitting.'),
-  ...figure('fig_loss_curves.png', 560, 266, 'Training and validation MSE loss of the CNN-LSTM with attention on FD001.'),
+  ...body('Fig. 2 compares predicted and actual RUL for all 100 FD001 test engines (seed 0, test RMSE 13.51). Predictions are tight for engines close to failure: the RMSE is 5.40 cycles for engines with fewer than 50 cycles left, against 13.09 for engines with 100 or more. This is the useful direction for maintenance, since accuracy matters most just before failure. Twelve of the 100 engines have an absolute error above 20 cycles, almost all in the mid and high RUL range, and 61% of predictions are later than the true value, which explains the PHM08 penalty discussed above.'),
+  ...figure('fig_pred_vs_actual.png', 560, 266, 'Predicted versus actual RUL for the FD001 test engines (CNN-LSTM with attention, seed 0), sorted by actual RUL.'),
+  ...body('Fig. 3 follows held-out validation engine 2 over its full life of 287 cycles (validation engines, unlike test engines, run to failure). The prediction stays at the cap during the healthy phase, begins to fall around cycle 100, before the start of the labelled decline at cycle 162, and then tracks the decline to failure with an RMSE of 7.44 cycles. Declining early means the model warns before the label does, which is the safe direction.'),
+  ...figure('fig_engine_trajectory.png', 560, 266, 'RUL prediction over the life of FD001 validation engine 2. The prediction falls slightly before the labelled knee point and then follows the linear decline.'),
+  ...body('Fig. 4 shows training and validation loss of the proposed model. Both fall quickly in the first ten epochs and then level off together with no widening gap, so the model does not over-fit; early stopping restored the weights from the best validation epoch.'),
+  ...figure('fig_loss_curves.png', 560, 266, 'Training and validation MSE loss (log scale) of the CNN-LSTM with attention on FD001, seed 0.'),
+  ...body('Fig. 5 shows the mean attention weight per time step over all validation windows. The model places 76% of its attention on the current cycle and 89% on the last five, with almost no weight on cycles older than about fifteen steps. The LSTM state at the final step already summarises the history, so attention mostly acts as a learned read-out of that state with a small correction from the preceding cycles. This also explains why the gain over the plain LSTM is small.'),
+  ...figure('fig_attention.png', 560, 224, 'Mean attention weight per time step within the 30-cycle window (FD001 validation windows, seed 0).'),
   subHead('D. Discussion'),
   ...body(
-    ['The results support three conclusions. First, temporal modelling matters: every sequence model beats the strongest non-sequential baseline under the same pipeline. Second, combining convolutional feature extraction with recurrent modelling and attention gives a consistent further gain at a modest cost in parameters (', { ph: '52 K' }, ' versus ', { ph: '33 K' }, ' for the LSTM). Third, pre-processing choices such as the RUL cap influence error as much as architecture does, which is why a shared pipeline is necessary for a fair comparison.'],
-    'The study has limitations. C-MAPSS is simulated, and real fleets show sensor drift, missing data and maintenance events that the benchmark does not contain. The models produce point estimates without a measure of confidence, which a maintenance planner would need. These points motivate the future work below.',
+    'The results support three conclusions. First, temporal modelling matters: every deep model beats both classical baselines on RMSE under the same pipeline, and the margin grows on the more complex FD003 subset. Second, the proposed CNN-LSTM with attention gives the lowest average error, but its gain over a well-trained LSTM is modest, and the LSTM is better on the safety-weighted PHM08 score. Where late warnings are costly, the plain LSTM is therefore a strong and simpler choice. Third, pre-processing choices such as the RUL cap change the error as much as the architecture does, so a shared pipeline is essential for a fair comparison.',
+    'Training details also mattered as much as architecture. In a first run with unscaled RUL targets and a short early-stopping patience, two of three LSTM seeds collapsed to predicting the mean RUL (test RMSE above 40), and a 1D-CNN with global average pooling, which discards the position of each time step, performed worse than the Random Forest. Scaling the target to [0, 1], increasing the patience and flattening the convolutional output fixed both problems. These changes were checked on validation error only.',
+    'The study has limitations. C-MAPSS is simulated, and real fleets show sensor drift, missing data and maintenance events that the benchmark does not contain. Only the single-condition subsets FD001 and FD003 were evaluated. The models give point estimates without a measure of confidence, which a maintenance planner would need, and the late-prediction rate (61% on FD001) shows that an explicit safety margin or an asymmetric loss would be needed in practice.',
   ),
 ];
 
@@ -271,8 +272,8 @@ const results = [
 const conclusion = [
   sectionHead('V. Conclusion'),
   ...body(
-    ['This report presented a deep learning approach to predictive maintenance that estimates the Remaining Useful Life of turbofan engines from multivariate sensor data. Using one shared pipeline of sensor selection, normalisation, RUL capping and sliding windows, we compared two classical baselines with a 1D-CNN, a stacked LSTM and a hybrid CNN-LSTM with attention. The hybrid model achieved the best performance, with an RMSE of ', { ph: '12.9' }, ' and a PHM08 score of ', { ph: '271' }, ' on FD001, and the ablation study showed that the window length and the RUL cap are important design choices.'],
-    'Future work will extend the evaluation to the multi-condition subsets FD002 and FD004, test Transformer-based sequence models, add uncertainty estimation through Monte Carlo dropout or deep ensembles so that each prediction carries a confidence interval, validate on real industrial data, and deploy the model as a real-time monitoring dashboard.',
+    'This report presented a deep learning approach to predictive maintenance that estimates the Remaining Useful Life of turbofan engines from multivariate sensor data. Using one shared pipeline of sensor selection, normalisation, RUL capping and sliding windows, we compared two classical baselines with a 1D-CNN, a stacked LSTM and a hybrid CNN-LSTM with attention over five seeds. All deep models outperformed the baselines. The CNN-LSTM with attention achieved the lowest RMSE on both subsets (13.37 on FD001 and 11.88 on FD003), while the plain LSTM achieved the best PHM08 score (305 and 261), so the two recurrent models are the strongest candidates and the better choice depends on whether average error or late-prediction risk matters more. The ablation showed that 30 cycles of history are sufficient and that the RUL cap is as influential as the architecture.',
+    'Future work will extend the evaluation to the multi-condition subsets FD002 and FD004, train with an asymmetric loss that directly penalises late predictions, test Transformer-based sequence models, add uncertainty estimation through Monte Carlo dropout or deep ensembles so that each prediction carries a confidence interval, validate on real industrial data, and deploy the model as a real-time monitoring dashboard.',
   ),
 ];
 

@@ -1,0 +1,49 @@
+17:55:08 FD001 train/val/test windows: 13980 3751 100
+17:57:40 FD001 RF seed 0 15.74
+18:00:09 FD001 RF seed 1 15.9
+18:02:40 FD001 RF seed 2 15.73
+18:05:08 FD001 RF seed 3 16.06
+18:07:36 FD001 RF seed 4 16.13
+18:07:57 FD001 1D-CNN seed 0 rmse 14.08 score 352.0 epochs 49
+18:08:23 FD001 1D-CNN seed 1 rmse 13.81 score 340.0 epochs 61
+18:08:52 FD001 1D-CNN seed 2 rmse 13.98 score 372.8 epochs 69
+18:09:18 FD001 1D-CNN seed 3 rmse 13.56 score 308.9 epochs 60
+18:09:34 FD001 1D-CNN seed 4 rmse 13.69 score 346.6 epochs 39
+18:09:59 FD001 LSTM seed 0 rmse 14.1 score 331.5 epochs 34
+18:10:24 FD001 LSTM seed 1 rmse 14.25 score 322.8 epochs 31
+18:11:13 FD001 LSTM seed 2 rmse 13.76 score 367.6 epochs 67
+18:12:05 FD001 LSTM seed 3 rmse 13.2 score 255.4 epochs 72
+18:12:38 FD001 LSTM seed 4 rmse 12.9 score 248.3 epochs 46
+18:13:17 FD001 CNN-LSTM + Attention seed 0 rmse 13.51 score 308.6 epochs 46
+18:14:37 FD001 CNN-LSTM + Attention seed 1 rmse 13.43 score 357.0 epochs 98
+18:15:46 FD001 CNN-LSTM + Attention seed 2 rmse 12.99 score 311.3 epochs 84
+18:16:48 FD001 CNN-LSTM + Attention seed 3 rmse 13.93 score 366.4 epochs 73
+18:17:42 FD001 CNN-LSTM + Attention seed 4 rmse 13.0 score 339.8 epochs 66
+18:17:42 FD003 train/val/test windows: 17273 4547 100
+18:21:48 FD003 RF seed 0 17.58
+18:25:53 FD003 RF seed 1 17.18
+18:30:02 FD003 RF seed 2 17.62
+18:34:05 FD003 RF seed 3 17.33
+18:38:07 FD003 RF seed 4 17.44
+18:38:33 FD003 1D-CNN seed 0 rmse 13.71 score 448.5 epochs 53
+18:38:58 FD003 1D-CNN seed 1 rmse 14.72 score 606.3 epochs 52
+18:39:20 FD003 1D-CNN seed 2 rmse 13.37 score 445.6 epochs 45
+18:39:53 FD003 1D-CNN seed 3 rmse 13.66 score 478.7 epochs 67
+18:40:25 FD003 1D-CNN seed 4 rmse 13.47 score 406.5 epochs 65
+18:42:01 FD003 LSTM seed 0 rmse 11.86 score 244.2 epochs 108
+18:43:01 FD003 LSTM seed 1 rmse 12.53 score 241.7 epochs 63
+18:44:27 FD003 LSTM seed 2 rmse 11.4 score 244.9 epochs 92
+18:46:33 FD003 LSTM seed 3 rmse 13.34 score 300.3 epochs 143
+18:47:50 FD003 LSTM seed 4 rmse 12.65 score 272.7 epochs 86
+18:49:06 FD003 CNN-LSTM + Attention seed 0 rmse 11.83 score 272.0 epochs 77
+18:49:54 FD003 CNN-LSTM + Attention seed 1 rmse 13.2 score 458.1 epochs 49
+18:50:49 FD003 CNN-LSTM + Attention seed 2 rmse 11.78 score 283.3 epochs 55
+18:52:02 FD003 CNN-LSTM + Attention seed 3 rmse 11.43 score 264.9 epochs 75
+18:53:29 FD003 CNN-LSTM + Attention seed 4 rmse 11.19 score 238.7 epochs 89
+18:55:16 ablation 20 125 15.96 667.3
+18:58:16 ablation 30 125 13.31 325.7
+19:01:51 ablation 40 125 13.49 323.9
+19:03:59 ablation 30 115 12.66 251.1
+19:06:19 ablation 30 130 14.58 484.0
+19:08:37 ablation 30 None 28.3 463833.4
+19:08:38 done

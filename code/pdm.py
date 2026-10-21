@@ -72,13 +72,13 @@ def phm_score(pred, true):
 
 # ---------------- models ----------------
 class CNN1D(nn.Module):
-    def __init__(self, n_feat):
+    def __init__(self, n_feat, window=30):
         super().__init__()
         self.net = nn.Sequential(
             nn.Conv1d(n_feat, 64, 5, padding=2), nn.ReLU(),
             nn.Conv1d(64, 64, 3, padding=1), nn.ReLU(),
-            nn.AdaptiveAvgPool1d(1), nn.Flatten(),
-            nn.Linear(64, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 1))
+            nn.Flatten(),
+            nn.Linear(64 * window, 64), nn.ReLU(), nn.Dropout(0.3), nn.Linear(64, 1))
 
     def forward(self, x):  # x: (batch, time, features)
         return self.net(x.transpose(1, 2)).squeeze(-1)
@@ -124,19 +124,20 @@ def n_params(model):
     return sum(p.numel() for p in model.parameters())
 
 
-def train_dl(name, data, seed, epochs=100, patience=10, batch=256, lr=1e-3):
+def train_dl(name, data, seed, epochs=150, patience=20, batch=256, lr=1e-3, y_scale=125.0):
+    """Targets are divided by y_scale for training (avoids the LSTM collapsing to the mean); outputs are in cycles."""
     torch.manual_seed(seed); np.random.seed(seed)
     Xtr, ytr, Xva, yva, Xte, yte = data
-    model = MODELS[name](Xtr.shape[2])
+    model = MODELS[name](Xtr.shape[2], window=Xtr.shape[1]) if name == '1D-CNN' else MODELS[name](Xtr.shape[2])
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     lossf = nn.MSELoss()
-    Xtr_t, ytr_t = torch.from_numpy(Xtr), torch.from_numpy(ytr)
+    Xtr_t, ytr_t = torch.from_numpy(Xtr), torch.from_numpy(ytr / y_scale)
     Xva_t = torch.from_numpy(Xva)
 
     def predict(X):
         model.eval()
         with torch.no_grad():
-            return torch.cat([model(X[i:i + 4096]) for i in range(0, len(X), 4096)]).numpy()
+            return torch.cat([model(X[i:i + 4096]) for i in range(0, len(X), 4096)]).numpy() * y_scale
 
     best, best_state, wait, hist = np.inf, None, 0, {'train': [], 'val': []}
     t0 = time.time()
@@ -151,7 +152,7 @@ def train_dl(name, data, seed, epochs=100, patience=10, batch=256, lr=1e-3):
             loss.backward(); opt.step()
             tot += loss.item() * len(idx)
         val_mse = float(np.mean((predict(Xva_t) - yva) ** 2))
-        hist['train'].append(tot / len(perm)); hist['val'].append(val_mse)
+        hist['train'].append(tot / len(perm) * y_scale ** 2); hist['val'].append(val_mse)
         if val_mse < best:
             best, wait = val_mse, 0
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
@@ -163,4 +164,4 @@ def train_dl(name, data, seed, epochs=100, patience=10, batch=256, lr=1e-3):
     pred = np.clip(predict(torch.from_numpy(Xte)), 0, None)
     return {'rmse': rmse(pred, yte), 'score': phm_score(pred, yte), 'pred': pred.tolist(),
             'params': n_params(model), 'epochs': ep + 1, 'time_s': time.time() - t0,
-            'history': hist, 'model': model}
+            'val_rmse': float(np.sqrt(best)), 'history': hist, 'model': model}

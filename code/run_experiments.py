@@ -95,52 +95,7 @@ for window, cap in [(20, 125), (30, 125), (40, 125), (30, 115), (30, 130), (30, 
     json.dump(results, open(f'{OUT}/results.json', 'w'), indent=1)
 
 # ---------- figures (FD001, proposed model, seed 0) ----------
-model, pred, true, hist, data = keep['model'], keep['pred'], keep['true'], keep['history'], keep['data']
-o = np.argsort(true)
-fig, ax = plt.subplots(figsize=(8, 3.8))
-ax.plot(true[o], 'o-', ms=3, label='Actual RUL', color='#333')
-ax.plot(pred[o], 's', ms=3, label='Predicted RUL (CNN-LSTM-Att)', color='#8B0000', alpha=.7)
-ax.set_xlabel('Test engine (sorted by actual RUL)'); ax.set_ylabel('RUL (cycles)'); ax.legend(); ax.grid(alpha=.3)
-fig.tight_layout(); fig.savefig(f'{FIG}/fig_pred_vs_actual.png', dpi=160)
-
-fig, ax = plt.subplots(figsize=(8, 3.8))
-e = np.arange(1, len(hist['train']) + 1)
-ax.plot(e, hist['train'], label='Training', color='#333'); ax.plot(e, hist['val'], label='Validation', color='#8B0000')
-ax.set_xlabel('Epoch'); ax.set_ylabel('MSE loss'); ax.set_yscale('log'); ax.legend(); ax.grid(alpha=.3)
-fig.tight_layout(); fig.savefig(f'{FIG}/fig_loss_curves.png', dpi=160)
-
-# Full-life trajectory of one held-out validation engine (validation engines run to failure).
-train = pdm.read('train_FD001.txt')
-units = train['unit'].unique()
-val_units = np.random.default_rng(0).choice(units, int(len(units) * 0.2), replace=False)
-Xtr, ytr, Xva, yva, _, _ = data
-g = train[train['unit'] == val_units[0]]
-n = len(g) - 30 + 1
-start = sum(len(train[train['unit'] == u]) - 30 + 1 for u in train['unit'].unique() if u in val_units and u < val_units[0])
-model.eval()
-with torch.no_grad():
-    vp = model(torch.from_numpy(Xva[start:start + n])).numpy()
-    model(torch.from_numpy(Xva))  # fills last_attention for every validation window
-    att_w = model.last_attention.numpy()
-cyc = g['cycle'].values[29:]
-fig, ax = plt.subplots(figsize=(8, 3.8))
-ax.plot(cyc, yva[start:start + n], label='Actual RUL (capped at 125)', color='#333', lw=2)
-ax.plot(cyc, vp, label='Predicted RUL', color='#8B0000', alpha=.85)
-ax.set_xlabel('Operating cycle'); ax.set_ylabel('RUL (cycles)'); ax.set_title(f'Validation engine {val_units[0]}', fontsize=10)
-ax.legend(); ax.grid(alpha=.3)
-fig.tight_layout(); fig.savefig(f'{FIG}/fig_engine_trajectory.png', dpi=160)
-
-mean_att = att_w.mean(0)
-fig, ax = plt.subplots(figsize=(8, 3.2))
-ax.bar(np.arange(-29, 1), mean_att, color='#8B0000')
-ax.set_xlabel('Time step within window (0 = current cycle)'); ax.set_ylabel('Mean attention weight'); ax.grid(alpha=.3, axis='y')
-fig.tight_layout(); fig.savefig(f'{FIG}/fig_attention.png', dpi=160)
-
-results['figures'] = {'val_engine': int(val_units[0]), 'attention_last5_share': float(mean_att[-5:].sum()),
-                      'attention_mean': mean_att.tolist(),
-                      'fd001_seed0_test_abs_err_mean': float(np.mean(np.abs(pred - true))),
-                      'fd001_seed0_late_share': float(np.mean(pred > true)),
-                      'fd001_seed0_err_high_rul': float(np.sqrt(np.mean((pred[true >= 100] - true[true >= 100]) ** 2))),
-                      'fd001_seed0_err_low_rul': float(np.sqrt(np.mean((pred[true < 50] - true[true < 50]) ** 2)))}
+import make_figures
+results['figures'] = make_figures.make(keep['model'], keep['data'], np.array(keep['pred']), keep['true'], keep['history'], FIG)
 json.dump(results, open(f'{OUT}/results.json', 'w'), indent=1)
 log('done')
