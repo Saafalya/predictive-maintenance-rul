@@ -1,3 +1,4 @@
+// Original-draft builder. The submitted report is built by build_report_edited.js from edited_content.json.
 // Builds the DL ESE report in the same layout as the reference (MARS) report.
 // Usage: node build_report.js   (run from this folder)
 const fs = require('fs');
