@@ -80,7 +80,7 @@
   },
   {
    "k": "body",
-   "t": "Weights [5] used recurrent neural networks for the 2008 PHM challenge, showing the feasibility of neural models on this problem. Babu et al. [6] were the first to use deep CNNs to perform RUL regression, using 2D windows of sensor readings and doing better than shallow regressors. Li et al. [7] build even deeper one-dimensional CNNs over windows of time, performing well on all four C-MAPSS subsets without any feature engineering."
+   "t": "Heimes [5] used recurrent neural networks for the 2008 PHM challenge, showing the feasibility of neural models on this problem. Babu et al. [6] were the first to use deep CNNs to perform RUL regression, using 2D windows of sensor readings and doing better than shallow regressors. Li et al. [7] build even deeper one-dimensional CNNs over windows of time, performing well on all four C-MAPSS subsets without any feature engineering."
   },
   {
    "k": "sub",
@@ -175,7 +175,7 @@
   },
   {
    "k": "body",
-   "t": "We use the NASA Commercial Modular Aero-Propulsion System Simulation (C-MAPSS) dataset [3]. All engines are started in a healthy condition with unknown manufacturing variation and initial degradation, and run until failure. Each row is a single operating cycle and includes the engine id, cycle id, operational settings and 21 sensor values (temperatures, pressures, fan and core speed, and fuel-flow ratio). Both the training set, in which each engine ends in failure, and the test set, which terminates some time before failure, are comprised of four subsets. The latter includes only the final, unsuccessful segment of each engine, and the (unknown) RUL at the end of that segment. FD001 is the primary benchmark, while FD003 is used for additional comparison."
+   "t": "We use the NASA Commercial Modular Aero-Propulsion System Simulation (C-MAPSS) dataset [3]. All engines are started in a healthy condition with unknown manufacturing variation and initial degradation, and run until failure. Each row is a single operating cycle and includes the engine id, cycle id, operational settings and 21 sensor values (temperatures, pressures, fan and core speed, and fuel-flow ratio). Both the training set, in which each engine ends in failure, and the test set, which terminates some time before failure, are comprised of four subsets. The latter includes only the final, unsuccessful segment of each engine, and the (given) RUL at the end of that segment. FD001 is the primary benchmark, while FD003 is used for additional comparison."
   },
   {
    "k": "tcap",
@@ -357,7 +357,7 @@
   },
   {
    "k": "body",
-   "t": "The PHM08 score [3] s = Σ ( e - 1) for d 0 = (e () 1)/13 for d 0 outpace in the growth the other score as they carry a higher risk in the real world. The worse a score, the more risk is carried, either way."
+   "t": "The PHM08 score [3] s = Σ (e^(-d/13) - 1) for d < 0 and Σ (e^(d/10) - 1) for d ≥ 0 outpace in the growth the other score as they carry a higher risk in the real world. The worse a score, the more risk is carried, either way."
   },
   {
    "k": "sec",
@@ -435,7 +435,7 @@
   },
   {
    "k": "body",
-   "t": "Two results are surprising, then. Firstly, the linear regression beats the random forest on both sets (15.91, 14.99 on FD001). This is probably because the flattened input has 420 correlated features, a linear model that can efficiently use this, while the random forests, and all the other tree ensembles, predict means of training targets and are thus prone to pull the big and little RULs of the extreme trajectories towards the middle. Secondly, the model with an LSTM layer instead of the other recurrent layer (but not the plain LSTM model, which scores lower on PHM08 on both sets 305,261) has the best PHM08 score on both sets (261,305). Since PHM08 penalizes late predictions exponentially, this score is best if the model makes fewer large late errors, even though the average error is slightly higher. On FD001, the RMSE difference between the two recurrent models (0.27 cycles) is smaller than the LSTM's seed-to-seed standard deviation (0.52) and the other seed-to-seed variation (0.51), so these two could be considered roughly equal there; on FD003, it is larger."
+   "t": "Two results are surprising, then. Firstly, the linear regression beats the random forest on both sets (14.99, 15.91 on FD001). This is probably because the flattened input has 420 correlated features, a linear model that can efficiently use this, while the random forests, and all the other tree ensembles, predict means of training targets and are thus prone to pull the big and little RULs of the extreme trajectories towards the middle. Secondly, the model with an LSTM layer instead of the other recurrent layer (i.e. the plain LSTM model, which scores lower on PHM08 on both sets 305,261) has the best PHM08 score on both sets (305,261). Since PHM08 penalizes late predictions exponentially, this score is best if the model makes fewer large late errors, even though the average error is slightly higher. On FD001, the RMSE difference between the two recurrent models (0.27 cycles) is smaller than the LSTM's seed-to-seed standard deviation (0.52) and the other seed-to-seed variation (0.35), so these two could be considered roughly equal there; on FD003, it is larger."
   },
   {
    "k": "body",
@@ -447,7 +447,7 @@
   },
   {
    "k": "body",
-   "t": "Table V – different window length & RUL cap for the model in Table I, on FD001 (mean ± std. Over three seeds). All other parameters are fixed. We apply the same scoring target for each row to enable a fair comparison for every setting (RUL_true capped at 125)."
+   "t": "Table V – different window length & RUL cap for the CNN-LSTM + Attention model, on FD001 (mean ± std. Over three seeds). All other parameters are fixed. We apply the same scoring target for each row to enable a fair comparison for every setting (RUL_true capped at 125)."
   },
   {
    "k": "tcap",
@@ -503,7 +503,7 @@
   },
   {
    "k": "body",
-   "t": "A window of 20 cycles is too short (RMSE 15.96), while 30 and 40 cycles are very similar to each other (13.31, 13.49) so 30 cycles is the best it can be. The RUL cap is much more significant. Truncating un capped (best) is by far the worst setting (28.30): the model learns to put all healthy engines above 125, something it can't learn just from the sensor data. 115 gives a lower error than 125 (12.66 vs. 13.31) and 130 higher (14.58). This effect is partly due to scoring each row against the target of 125, which encourages models to predict below 125. We prefer 125 because it was fixed in advance based on the literature, and testing for the comparison in table IV would give unfair advantage to the test models."
+   "t": "A window of 20 cycles is too short (RMSE 15.96), while 30 and 40 cycles are very similar to each other (13.31, 13.49) so 30 cycles is the best it can be. The RUL cap is much more significant. Truncating un capped (no cap) is by far the worst setting (28.30): the model learns to put all healthy engines above 125, something it can't learn just from the sensor data. 115 gives a lower error than 125 (12.66 vs. 13.31) and 130 higher (14.58). This effect is partly due to scoring each row against the target of 125, which encourages models to predict below 125. We prefer 125 because it was fixed in advance based on the literature, and testing for the comparison in table IV would give unfair advantage to the test models."
   },
   {
    "k": "sub",
@@ -511,7 +511,7 @@
   },
   {
    "k": "body",
-   "t": "Fig. 2 shows predicted and true RULs for all 100 FD001 test engines (seed 0, test RMSE 13.51). Engines near failure are much more accurately predicted: engine RMSE was 5.40 cycles for less than 50 cycles remaining, compared with 13.09 for more than 100. Which is the relevant metric for maintenance? The closer to failure the better it is to get your prediction right - new engines are relatively easy to predict as they have RUL > 150 cycles, with RMSE of 24.94, compared with 36.25 for less than 50 cycles remaining. 12 of the 100 engines are off by more than 20 cycles, most in the middle and late range, and our predictions are 61% late, contributing to the PHM08 penalty mentioned above."
+   "t": "Fig. 2 shows predicted and true RULs for all 100 FD001 test engines (seed 0, test RMSE 13.51). Engines near failure are much more accurately predicted: engine RMSE was 5.40 cycles for less than 50 cycles remaining, compared with 13.09 for more than 100. Which is the relevant metric for maintenance? The closer to failure the better it is to get your prediction right - new engines are relatively easy to predict as they have RUL > 100 cycles, with RMSE of 13.09, compared with 5.40 for less than 50 cycles remaining. 12 of the 100 engines are off by more than 20 cycles, most in the middle and late range, and our predictions are 61% late, contributing to the PHM08 penalty mentioned above."
   },
   {
    "k": "fig",
@@ -522,7 +522,7 @@
   },
   {
    "k": "body",
-   "t": "20 cycles is too short (RMSE 15.96), while 30 and 40 are very close (13.31, 13.49), so 30 is optimal. But the RUL cap is more important. Truncating un capped (best) is by far the worse setting (28.30): it forces the model to put all healthy engines above 125, which it cannot learn from the sensor data alone. 115 does best in prediction, below 125 (12.66 rather than 13.31) and 130 is worse than 125 (14.58). This is partly due to rows being scored against the target 125, so models are incentivised to predict below 125. But we prefer 125 because it was predetermined by survey of the literature, and evaluating for comparison in table IV would unfairly advantage the test models."
+   "t": "20 cycles is too short (RMSE 15.96), while 30 and 40 are very close (13.31, 13.49), so 30 is optimal. But the RUL cap is more important. Truncating un capped (no cap) is by far the worse setting (28.30): it forces the model to put all healthy engines above 125, which it cannot learn from the sensor data alone. 115 does best in prediction, below 125 (12.66 rather than 13.31) and 130 is worse than 125 (14.58). This is partly due to rows being scored against the target 125, so models are incentivised to predict below 125. But we prefer 125 because it was predetermined by survey of the literature, and evaluating for comparison in table IV would unfairly advantage the test models."
   },
   {
    "k": "sub",
@@ -530,7 +530,7 @@
   },
   {
    "k": "body",
-   "t": "Fig. 2 shows predicted and actual RULs for all 100 FD001 test engines (seed 0, test RMSE 13.51). Engines approaching failure are predicted far more accurately: engine RMSE was 5.40 cycles for fewer than 50 remaining, versus 13.09 for more than 100 remaining. Which is more relevant for maintenance? The closer to failure the more important it is to get your prediction right -new engines are easier to predict as they have RUL > 150 cycles (rMSE =24.94), versus 36.25 for fewer than 50 remaining. 12 of our 100 engines are off by greater than 20 cycles, most in the middle and late ranges, and our predictions are 61% late, driving the PHM08 penalty described above."
+   "t": "Fig. 2 shows predicted and actual RULs for all 100 FD001 test engines (seed 0, test RMSE 13.51). Engines approaching failure are predicted far more accurately: engine RMSE was 5.40 cycles for fewer than 50 remaining, versus 13.09 for more than 100 remaining. Which is more relevant for maintenance? The closer to failure the more important it is to get your prediction right -new engines are easier to predict as they have RUL > 100 cycles (rMSE =13.09), versus 5.40 for fewer than 50 remaining. 12 of our 100 engines are off by greater than 20 cycles, most in the middle and late ranges, and our predictions are 61% late, driving the PHM08 penalty described above."
   },
   {
    "k": "fig",
@@ -567,11 +567,11 @@
   },
   {
    "k": "body",
-   "t": "These findings lead to three conclusions. Firstly, that the modelling temporality matters: all deep models outperform the classical baselines on RMSE with the same pipeline, and the gap increases on the harsher FD003 subset. Secondly, that the CNN-LSTM with attention system performs worst, but slightly outperforms a capable LSTM, and that the LSTM wins on the safety-weighted PHM08 score. This means that in applications where late warnings are expensive, the plain LSTM is a safer, simpler alternative. Third, that simple pre-processing differences, such as the RUL cap, affect errors just as much as the architecture, and so a common pipeline is essential."
+   "t": "These findings lead to three conclusions. Firstly, that the modelling temporality matters: all deep models outperform the classical baselines on RMSE with the same pipeline, and the gap increases on the harsher FD003 subset. Secondly, that the CNN-LSTM with attention system performs best, but slightly outperforms a capable LSTM, and that the LSTM wins on the safety-weighted PHM08 score. This means that in applications where late warnings are expensive, the plain LSTM is a safer, simpler alternative. Third, that simple pre-processing differences, such as the RUL cap, affect errors just as much as the architecture, and so a common pipeline is essential."
   },
   {
    "k": "body",
-   "t": "Training was just as important as architecture. In one early attempt, using the unscaled RUL targets with a small early-stopping patience, I got 2 out of 3 LSTM seeds converging to the mean RUL (test RMSE > 40) and a 1D-CNN with global average pooling, which removes the position information of each time step, outperformed the Random Forest. Scaling the target to [0, 1], increasing the patience, flattening the convolutional output get both problems back. These were verified on the validation error only."
+   "t": "Training was just as important as architecture. In one early attempt, using the unscaled RUL targets with a small early-stopping patience, I got 2 out of 3 LSTM seeds converging to the mean RUL (test RMSE > 40) and a 1D-CNN with global average pooling, which removes the position information of each time step, underperformed the Random Forest. Scaling the target to [0, 1], increasing the patience, flattening the convolutional output get both problems back. These were verified on the validation error only."
   },
   {
    "k": "body",
