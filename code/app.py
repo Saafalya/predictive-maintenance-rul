@@ -16,8 +16,16 @@ import streamlit as st
 import streamlit.components.v1 as components
 import torch
 
+import importlib
+
 import pdm
 import ui
+
+# Streamlit re-runs this file on every change but keeps imported modules in memory.
+# Reload ui.py whenever it has been edited, so a style update never needs a full restart.
+if getattr(ui, '_loaded_mtime', None) != os.path.getmtime(ui.__file__):
+    ui = importlib.reload(ui)
+    ui._loaded_mtime = os.path.getmtime(ui.__file__)
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 MODEL_DIR = os.path.join(ROOT, 'models')
