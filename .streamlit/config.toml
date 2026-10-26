@@ -2,10 +2,19 @@
 gatherUsageStats = false
 
 [theme]
-base = "light"
+font = "Geist, Segoe UI, sans-serif"
+baseRadius = "8px"
+
+[theme.light]
 primaryColor = "#141414"
 backgroundColor = "#F2F4F7"
 secondaryBackgroundColor = "#ECEEF1"
 textColor = "#0A0A0A"
 borderColor = "#E3E6EA"
-font = "Geist, Segoe UI, sans-serif"
+
+[theme.dark]
+primaryColor = "#F4F4F4"
+backgroundColor = "#141414"
+secondaryBackgroundColor = "#222222"
+textColor = "#F4F4F4"
+borderColor = "#2C2C2C"
