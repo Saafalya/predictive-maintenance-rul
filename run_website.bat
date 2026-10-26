@@ -23,6 +23,9 @@ if errorlevel 1 (
     python -m pip install -r requirements.txt || (echo [ERROR] Install failed & pause & exit /b 1)
 )
 
+REM Stop a copy of the site that is still running, so this always starts fresh
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8501 " ^| findstr "LISTENING"') do taskkill /PID %%p /F >nul 2>nul
+
 echo.
 echo Starting the website. It opens in your browser at http://localhost:8501
 echo Keep this window open while you use the site. Close it to stop the site.
