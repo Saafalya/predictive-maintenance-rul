@@ -72,7 +72,7 @@ It opens at http://localhost:8501 and has four tabs:
 - **Score your own data**: upload a C-MAPSS-format sensor file and download predictions.
 - **Model comparison**: the five-model results from `results/results.json`.
 
-Pick **Light**, **Graphite** or **Black** under *Settings* in the top bar, which also holds the maintenance thresholds; the fleet and engine dropdowns sit beside it. The look the choice is kept in the page address (`?look=Black`) and Streamlit's own controls follow it.
+Pick **Light**, **Graphite** or **Black** under *Settings* in the top bar, which also holds the maintenance thresholds; the fleet and engine dropdowns sit beside it. The look is kept in the page address (`?look=Black`) and Streamlit's own controls follow it.
 
 Drift is the mean of a sensor's last 10 cycles compared with the mean and spread of the first 30 cycles of every training engine. Sensor names, units and stations follow Saxena et al. (2008).
 
