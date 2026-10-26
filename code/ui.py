@@ -26,21 +26,24 @@ THEMES = {
         grid='#e8eaed', axis='#9aa0a6', primary_bg='#141414', primary_ink='#ffffff', primary_hover='#2b2b2b',
         negative='#c4242a', status=_STATUS_LIGHT,
         pill={'Critical': ('#ffedea', '#831c1e'), 'Plan maintenance': ('#fffbeb', '#92400e'), 'Healthy': ('#dcfae5', '#04250e')},
-        metal='#aeb5bd', shell='#dfe3e8', neutral='#c9ced4', env=0.55, shadow=0.16, tip_shadow='rgba(0,0,0,.08)'),
+        metal='#aeb5bd', shell='#dfe3e8', neutral='#c9ced4', env=0.55, shadow=0.16, tip_shadow='rgba(0,0,0,.08)',
+        band='#0f1b26', band_text='#ffffff', band_muted='#b4bfca', plate='#0a1119', plate_ring='#22303d'),
     'Graphite': dict(
         dark=True, ground='#141414', surface='#1b1b1b', stage='#202020', raised='#242424', border='#2c2c2c',
         rule='#252525', control='#3d3d3d', text='#f4f4f4', muted='#a8a8a8', hue='#6ea1f7', comp='#8c8c8c',
         grid='#2a2a2a', axis='#5c5c5c', primary_bg='#f4f4f4', primary_ink='#111111', primary_hover='#ffffff',
         negative='#f0616d', status=_STATUS_DARK,
         pill={'Critical': ('#2c1a1d', '#f08a96'), 'Plan maintenance': ('#2a2112', '#e9b45a'), 'Healthy': ('#172a1d', '#4fd18b')},
-        metal='#8d949c', shell='#3a3e43', neutral='#5b6067', env=0.8, shadow=0.45, tip_shadow='rgba(0,0,0,.4)'),
+        metal='#8d949c', shell='#3a3e43', neutral='#5b6067', env=0.8, shadow=0.45, tip_shadow='rgba(0,0,0,.4)',
+        band='#1f1f1f', band_text='#ffffff', band_muted='#b0b0b0', plate='#0e0e0e', plate_ring='#333333'),
     'Black': dict(
         dark=True, ground='#000000', surface='#0e0e0e', stage='#121212', raised='#181818', border='#1f1f1f',
         rule='#181818', control='#3a3a3a', text='#ffffff', muted='#a3a3a3', hue='#6ea1f7', comp='#8a8a8a',
         grid='#1f1f1f', axis='#4c4c4c', primary_bg='#ffffff', primary_ink='#000000', primary_hover='#e6e6e6',
         negative='#f0616d', status=_STATUS_DARK,
         pill={'Critical': ('#2c1a1d', '#f08a96'), 'Plan maintenance': ('#2a2112', '#e9b45a'), 'Healthy': ('#172a1d', '#4fd18b')},
-        metal='#8d949c', shell='#2f3236', neutral='#55595f', env=0.9, shadow=0.6, tip_shadow='rgba(0,0,0,.5)'),
+        metal='#8d949c', shell='#2f3236', neutral='#55595f', env=0.9, shadow=0.6, tip_shadow='rgba(0,0,0,.5)',
+        band='#111111', band_text='#ffffff', band_muted='#a8a8a8', plate='#000000', plate_ring='#2a2a2a'),
 }
 
 
@@ -59,10 +62,16 @@ def _faces():
         if data:
             out.append("@font-face{font-family:'Geist';font-style:normal;font-weight:%d;font-display:swap;"
                        "src:url(data:font/woff2;base64,%s) format('woff2');}" % (w, base64.b64encode(data).decode()))
+    for w, style, name in [(400, 'normal', 'normal'), (500, 'normal', 'normal'), (400, 'italic', 'italic')]:
+        data = _read(f'fonts/playfair-display-latin-{w}-{name}.woff2')
+        if data:
+            out.append("@font-face{font-family:'Playfair Display';font-style:%s;font-weight:%d;font-display:swap;"
+                       "src:url(data:font/woff2;base64,%s) format('woff2');}" % (style, w, base64.b64encode(data).decode()))
     return ''.join(out)
 
 
 FONT_FACES = _faces()
+SERIF = "'Playfair Display', Georgia, serif"
 THREE_JS = _read('vendor/three.min.js', 'r')
 FONT_STACK = "'Geist', 'Segoe UI', system-ui, sans-serif"
 EASE_OUT, EASE_IN_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)', 'cubic-bezier(0.77, 0, 0.175, 1)'
@@ -70,7 +79,8 @@ EASE_OUT, EASE_IN_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)', 'cubic-bezier(0.77, 0,
 
 def _vars(t):
     keys = ['ground', 'surface', 'stage', 'raised', 'border', 'rule', 'control', 'text', 'muted', 'hue',
-            'primary_bg', 'primary_ink', 'primary_hover', 'negative', 'tip_shadow']
+            'primary_bg', 'primary_ink', 'primary_hover', 'negative', 'tip_shadow', 'band', 'band_text', 'band_muted',
+            'plate', 'plate_ring']
     v = ''.join(f'--{k.replace("_", "-")}:{t[k]};' for k in keys)
     return (f':root{{{v}--ease-out:{EASE_OUT};--ease-in-out:{EASE_IN_OUT};'
             f'color-scheme:{"dark" if t["dark"] else "light"};}}')
@@ -91,6 +101,7 @@ __FACES__ __VARS__
 html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
   font-family: __STACK__; color: var(--text); font-variant-numeric: tabular-nums; }
 [data-testid="stAppViewContainer"] *:not([data-testid="stIconMaterial"]):not([class*="material"]) { font-family: __STACK__; }
+:is(.ehm-hero-text h1, .ehm-section h2, .ehm-features h3, .ehm-features .fig, [class*="st-key-card-"] h3, .st-key-nav .ehm-mark b, .ehm-hero-text .kicker span:last-child), :is(.ehm-hero-text h1, .ehm-section h2, .ehm-features h3, [class*="st-key-card-"] h3) * { font-family: 'Playfair Display', Georgia, serif !important; }
 span[data-testid="stIconMaterial"] { font-family: 'Material Symbols Rounded' !important; }
 [data-testid="stApp"], [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"] { background: var(--ground); }
 .block-container { padding: 3.6rem 2rem 4rem; max-width: 1320px; }
@@ -158,12 +169,12 @@ p, li { font-size: 14px; }
 
 
 /* Title card */
-.st-key-card-title { padding-bottom: 6px; }
+.ehm-hero { margin: 0 0 14px; }
 .ehm-hero .top { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
 .ehm-hero h1 { margin: 0; }
 .ehm-hero p.lede { margin: 6px 0 0; color: var(--muted); font-size: 15px; line-height: 22px; max-width: 70ch; }
 .ehm-hero .meta { text-align: right; font-size: 12px; line-height: 18px; color: var(--muted); white-space: nowrap; padding-top: 4px; }
-.ehm-hbar { display: flex; gap: 2px; height: 10px; margin: 20px 0 14px; border-radius: 5px; overflow: hidden; background: var(--raised); }
+.ehm-hbar { display: flex; gap: 2px; height: 10px; margin: 6px 0 14px; border-radius: 5px; overflow: hidden; background: var(--raised); }
 .ehm-hbar i { display: block; height: 100%; transition: opacity 150ms ease; }
 .ehm-hlegend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .ehm-hlegend div { transition: opacity 150ms ease; }
@@ -173,22 +184,57 @@ p, li { font-size: 14px; }
   background: var(--dot); vertical-align: 1px; }
 .ehm-hlegend em { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 1px; }
 @media (hover: hover) and (pointer: fine) {
-  .ehm-hero:has(.ehm-hbar i:hover) .ehm-hbar i:not(:hover) { opacity: .35; }
-  .ehm-hero:has(.ehm-hlegend div:hover) .ehm-hlegend div:not(:hover) { opacity: .45; }
-  .ehm-hero:has(.ehm-hlegend div:nth-child(1):hover) .ehm-hbar i:not(:nth-child(1)),
-  .ehm-hero:has(.ehm-hlegend div:nth-child(2):hover) .ehm-hbar i:not(:nth-child(2)),
-  .ehm-hero:has(.ehm-hlegend div:nth-child(3):hover) .ehm-hbar i:not(:nth-child(3)),
-  .ehm-hero:has(.ehm-hbar i:nth-child(1):hover) .ehm-hlegend div:not(:nth-child(1)),
-  .ehm-hero:has(.ehm-hbar i:nth-child(2):hover) .ehm-hlegend div:not(:nth-child(2)),
-  .ehm-hero:has(.ehm-hbar i:nth-child(3):hover) .ehm-hlegend div:not(:nth-child(3)) { opacity: .35; }
+  .ehm-health:has(.ehm-hbar i:hover) .ehm-hbar i:not(:hover) { opacity: .35; }
+  .ehm-health:has(.ehm-hlegend div:hover) .ehm-hlegend div:not(:hover) { opacity: .45; }
+  .ehm-health:has(.ehm-hlegend div:nth-child(1):hover) .ehm-hbar i:not(:nth-child(1)),
+  .ehm-health:has(.ehm-hlegend div:nth-child(2):hover) .ehm-hbar i:not(:nth-child(2)),
+  .ehm-health:has(.ehm-hlegend div:nth-child(3):hover) .ehm-hbar i:not(:nth-child(3)),
+  .ehm-health:has(.ehm-hbar i:nth-child(1):hover) .ehm-hlegend div:not(:nth-child(1)),
+  .ehm-health:has(.ehm-hbar i:nth-child(2):hover) .ehm-hlegend div:not(:nth-child(2)),
+  .ehm-health:has(.ehm-hbar i:nth-child(3):hover) .ehm-hlegend div:not(:nth-child(3)) { opacity: .35; }
 }
-.st-key-card-title [data-testid="stExpander"] { margin-top: 10px; }
-.st-key-card-title [data-testid="stExpander"] details { border: 0 !important; border-top: 1px solid var(--rule) !important;
+.ehm-health { margin-bottom: 18px; }
+.st-key-card-summary .ehm-sum { margin-top: 4px; }
+
+/* Sidebar: grouped, collapsible sections */
+[data-testid="stSidebar"] > div:first-child { padding-top: 6px; }
+[data-testid="stSidebarUserContent"] { padding: 0 20px 28px; }
+[data-testid="stSidebar"] .ehm-mark { padding: 4px 0 18px; margin: 0; border-bottom: 1px solid var(--border); }
+[data-testid="stSidebar"] [data-testid="stExpander"] details { border: 0 !important; border-bottom: 1px solid var(--border) !important;
   border-radius: 0 !important; background: transparent !important; }
-.st-key-card-title [data-testid="stExpander"] summary { padding: 14px 0 6px !important; background: transparent !important; }
-.st-key-card-title [data-testid="stExpander"] summary:hover p { color: var(--text); }
-.st-key-card-title [data-testid="stExpander"] summary p { font-size: 14px; font-weight: 600; }
-.st-key-card-title [data-testid="stExpanderDetails"] { padding: 0 0 6px !important; }
+[data-testid="stSidebar"] [data-testid="stExpander"] summary { padding: 16px 0 !important; background: transparent !important; }
+[data-testid="stSidebar"] [data-testid="stExpander"] summary p { font-size: 13px; font-weight: 600; color: var(--text); }
+[data-testid="stSidebar"] [data-testid="stExpander"] summary svg { color: var(--muted); transition: transform 200ms var(--ease-out); }
+[data-testid="stSidebar"] [data-testid="stExpanderDetails"] { padding: 0 0 18px !important; }
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p { font-size: 12px; font-weight: 500; color: var(--muted); }
+[data-testid="stSidebar"] { min-width: 300px !important; max-width: 300px !important; }
+[data-testid="stSidebar"] .react-aria-ComboBox > [role="group"] { background: var(--surface) !important; border: 1px solid var(--control) !important;
+  border-radius: 8px !important; min-height: 38px; transition: border-color 150ms ease; box-shadow: none !important; }
+[data-testid="stSidebar"] .react-aria-ComboBox > [role="group"]:focus-within { border-color: var(--text) !important; }
+[data-testid="stSidebar"] .react-aria-ComboBox input { font-size: 14px; color: var(--text); background: transparent !important; cursor: pointer; }
+[data-testid="stSidebar"] .react-aria-ComboBox button svg { color: var(--muted); transition: transform 200ms var(--ease-out); }
+[data-testid="stSidebar"] .react-aria-ComboBox button[aria-expanded="true"] svg { transform: rotate(180deg); }
+@media (hover: hover) and (pointer: fine) {
+  [data-testid="stSidebar"] .react-aria-ComboBox > [role="group"]:hover { border-color: var(--muted) !important; }
+}
+[data-testid="stSidebar"] [data-testid="stExpanderDetails"] { border: 0 !important; }
+[data-testid="stSidebar"] .stButtonGroup > div { flex-wrap: nowrap !important; background: var(--raised); border-radius: 9px;
+  padding: 3px; gap: 2px; width: 100%; }
+[data-testid="stSidebar"] .stButtonGroup button[role="radio"] { flex: 1 1 0; min-width: 0; border: 0 !important; border-radius: 7px !important;
+  background: transparent !important; min-height: 30px; padding: 0 6px;
+  transition: transform 160ms var(--ease-out), background-color 150ms ease, box-shadow 150ms ease; }
+[data-testid="stSidebar"] .stButtonGroup button[role="radio"]:active { transform: scale(0.97); }
+[data-testid="stSidebar"] .stButtonGroup button[role="radio"] p { font-size: 13px; color: var(--muted); }
+[data-testid="stSidebar"] .stButtonGroup button[aria-checked="true"] { background: var(--surface) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 0 0 1px var(--border); }
+[data-testid="stSidebar"] .stButtonGroup button[aria-checked="true"] p { color: var(--text); font-weight: 500; }
+[data-testid="stSidebar"] [data-testid="stSlider"] [role="slider"] { width: 16px; height: 16px; background: var(--surface);
+  border: 2px solid var(--text); box-shadow: none; transition: transform 160ms var(--ease-out); }
+[data-testid="stSidebar"] [data-testid="stSlider"] [role="slider"]:active { transform: scale(1.12); }
+[data-testid="stSidebar"] [data-testid="stSliderThumbValue"] p, [data-testid="stSidebar"] [data-testid="stSliderThumbValue"] {
+  font-size: 12px; color: var(--text); font-weight: 500; font-family: inherit; }
+[data-testid="stSidebar"] [data-testid="stSliderTickBar"] { display: none; }
+[data-testid="stSidebar"] p.ehm-side-note { margin: 0 0 8px; }
 
 /* Plain-words summary */
 [data-testid="stMarkdownContainer"] table.ehm-sum, [data-testid="stMarkdownContainer"] table.ehm-sum :is(tr, th, td) {
@@ -203,6 +249,96 @@ p, li { font-size: 14px; }
 .ehm-sum td.n { color: var(--muted); font-size: 13px; padding-right: 0; }
 .ehm-sum tr { transition: background-color 150ms ease; }
 @media (hover: hover) and (pointer: fine) { .ehm-sum tbody tr:hover { background: var(--stage); } }
+/* ---------- Layout after the reference: top bar, dark band, serif sections ---------- */
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="stHeader"] { display: none !important; }
+[data-testid="stMain"] { overflow-x: hidden; }
+.block-container { padding: 0 2.5rem 5rem !important; max-width: 1240px; }
+
+/* top bar */
+.st-key-nav { position: sticky; top: 0; z-index: 50; background: var(--ground); padding: 14px 0 12px;
+  border-bottom: 1px solid var(--border); margin-bottom: 0; }
+.st-key-nav [data-testid="stHorizontalBlock"] { align-items: center; gap: 12px; }
+.st-key-nav .ehm-mark { margin: 0; white-space: nowrap; }
+.st-key-nav .ehm-mark span { display: none; }
+.st-key-nav .ehm-mark b { font-family: 'Playfair Display', Georgia, serif; font-size: 19px; font-weight: 500; letter-spacing: 0; }
+.st-key-nav .stButtonGroup > div { justify-content: center; gap: 28px; flex-wrap: nowrap !important; }
+.st-key-nav .stButtonGroup button[role="radio"] { border: 0 !important; background: transparent !important; padding: 6px 0;
+  min-height: 32px; border-radius: 0 !important; box-shadow: none !important; transition: box-shadow 200ms var(--ease-out); }
+.st-key-nav .stButtonGroup button[role="radio"] p { font-size: 14px; color: var(--muted); font-weight: 500; transition: color 150ms ease; }
+.st-key-nav .stButtonGroup button[aria-checked="true"] { box-shadow: inset 0 -2px 0 var(--text) !important; }
+.st-key-nav .stButtonGroup button[aria-checked="true"] p { color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .st-key-nav .stButtonGroup button[role="radio"]:hover p { color: var(--text); } }
+.st-key-nav .react-aria-ComboBox > [role="group"], .st-key-nav [data-testid="stPopover"] button {
+  background: var(--surface) !important; border: 1px solid var(--control) !important; border-radius: 8px !important;
+  min-height: 36px; box-shadow: none !important; transition: border-color 150ms ease, transform 160ms var(--ease-out); }
+.st-key-nav .react-aria-ComboBox input { font-size: 13px; color: var(--text); cursor: pointer; }
+.st-key-nav [data-testid="stPopover"] button:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .st-key-nav .react-aria-ComboBox > [role="group"]:hover, .st-key-nav [data-testid="stPopover"] button:hover { border-color: var(--muted) !important; }
+}
+[data-testid="stPopoverBody"] { border-radius: 12px !important; border: 1px solid var(--border) !important; min-width: 300px;
+  box-shadow: 0 16px 40px var(--tip-shadow) !important; }
+[data-testid="stPopoverBody"] [data-testid="stWidgetLabel"] p { font-size: 12px; font-weight: 500; color: var(--muted); }
+[data-testid="stPopoverBody"] .stButtonGroup > div { flex-wrap: nowrap !important; background: var(--raised); border-radius: 9px; padding: 3px; gap: 2px; }
+[data-testid="stPopoverBody"] .stButtonGroup button[role="radio"] { flex: 1 1 0; border: 0 !important; border-radius: 7px !important;
+  background: transparent !important; min-height: 30px; transition: transform 160ms var(--ease-out), background-color 150ms ease; }
+[data-testid="stPopoverBody"] .stButtonGroup button[role="radio"]:active { transform: scale(0.97); }
+[data-testid="stPopoverBody"] .stButtonGroup button[aria-checked="true"] { background: var(--surface) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 0 0 1px var(--border); }
+[data-testid="stPopoverBody"] .stButtonGroup button p { font-size: 13px; }
+[data-testid="stPopoverBody"] [role="slider"] { background: var(--surface) !important; border: 2px solid var(--text); width: 16px; height: 16px; }
+[data-testid="stPopoverBody"] [data-testid="stSliderTickBar"] { display: none; }
+
+/* full-width dark band */
+.st-key-hero, .st-key-band { position: relative; width: 100vw !important; max-width: 100vw !important; left: 50%; margin-left: -50vw !important; background: var(--band);
+  padding: 0 max(2.5rem, calc((100vw - 1240px) / 2 + 2.5rem)); }
+.st-key-hero { margin-top: 76px !important; margin-bottom: 104px !important; }
+.st-key-band { margin-top: 0; margin-bottom: 40px; padding-top: 56px; padding-bottom: 56px; }
+.st-key-hero [data-testid="stHorizontalBlock"] { align-items: center; }
+.st-key-hero [data-testid="stColumn"]:first-child [data-testid="stElementContainer"]:has(iframe) { margin: -72px 0 -92px !important; }
+.ehm-hero-text { color: var(--band-text); max-width: 34rem; }
+.ehm-hero-text .kicker { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.ehm-hero-text .kicker span:last-child { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-size: 18px; color: var(--band-muted); }
+.ehm-hero-text h1 { font-family: 'Playfair Display', Georgia, serif !important; font-weight: 400 !important; font-size: 46px !important; line-height: 1.08 !important;
+  letter-spacing: -0.01em; color: var(--band-text) !important; margin: 0 !important; padding: 0 !important; }
+.ehm-hero-text p { color: var(--band-muted); font-size: 15px; line-height: 24px; margin: 18px 0 0; max-width: 32rem; }
+.st-key-hero .stDownloadButton button, .st-key-band .stDownloadButton button { background: transparent !important; border: 1px solid var(--band-text) !important;
+  border-radius: 2px !important; min-height: 44px; padding: 0 22px; }
+.st-key-hero .stDownloadButton button p { color: var(--band-text) !important; font-size: 13px; font-weight: 500; letter-spacing: 0.02em; }
+@media (hover: hover) and (pointer: fine) {
+  .st-key-hero .stDownloadButton button:hover { background: var(--band-text) !important; }
+  .st-key-hero .stDownloadButton button:hover p { color: var(--band) !important; }
+}
+.st-key-hero .stDownloadButton { margin-top: 10px; }
+
+/* serif sections */
+.ehm-section { text-align: center; margin: 24px auto 40px; max-width: 40rem; }
+.ehm-section h2 { font-family: 'Playfair Display', Georgia, serif !important; font-weight: 400 !important; font-size: 36px !important; line-height: 1.15 !important;
+  letter-spacing: -0.01em; margin: 0 !important; padding: 0 !important; }
+.ehm-section p { color: var(--muted); font-size: 15px; line-height: 23px; margin: 12px 0 0; }
+.ehm-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 56px; margin: 0 0 64px; }
+.ehm-features h3 { font-family: 'Playfair Display', Georgia, serif !important; font-weight: 400 !important; font-size: 21px !important; margin: 14px 0 8px !important; padding: 0 !important; }
+.ehm-features p { color: var(--muted); font-size: 14px; line-height: 22px; margin: 0; }
+.ehm-features .fig { display: block; font-family: 'Playfair Display', Georgia, serif; font-weight: 400; font-size: 44px; line-height: 1; margin-top: 18px; color: var(--text); }
+.ehm-icon { width: 56px; height: 56px; fill: none; stroke: var(--text); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ehm-icon .a { fill: var(--accent); stroke: none; }
+.ehm-gap { height: 72px; }
+[class*="st-key-card-"] h3 { font-family: 'Playfair Display', Georgia, serif !important; font-weight: 400 !important; font-size: 20px !important; }
+.ehm-stations td small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.ehm-stations .n { text-align: right; } .ehm-stations th.n { text-align: right; }
+.ehm-stations .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 8px; }
+
+@media (max-width: 900px) {
+  .block-container { padding: 0 1rem 4rem !important; }
+  .st-key-hero, .st-key-band { padding: 0 1.25rem; }
+  .st-key-band { padding-top: 40px; padding-bottom: 40px; }
+  .st-key-hero { margin-top: 40px; padding-bottom: 40px; margin-bottom: 64px; }
+  .st-key-hero [data-testid="stColumn"]:first-child [data-testid="stElementContainer"]:has(iframe) { margin: -32px 0 0; }
+  .ehm-hero-text h1 { font-size: 34px !important; }
+  .ehm-section h2 { font-size: 28px !important; }
+  .ehm-features { grid-template-columns: 1fr; gap: 36px; }
+  .st-key-nav .stButtonGroup > div { justify-content: flex-start; gap: 18px; overflow-x: auto; }
+}
 @media (max-width: 640px) {
   .block-container { padding: 4.2rem 1rem 3rem; }
   .ehm-kpis { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
@@ -257,24 +393,84 @@ def kpis(cells):
     return f'<div class="ehm-kpis">{"".join(out)}</div>'
 
 
-def title_card(t, title, sentence, segments, meta):
+def page_header(title, sentence, meta):
+    m = '<br>'.join(meta)
+    return (f'<div class="ehm-hero"><div class="top"><div><h1>{title}</h1><p class="lede">{sentence}</p></div>'
+            f'<div class="meta">{m}</div></div></div>')
+
+
+def health_bar(t, segments, legend=True):
     """segments: (status, count, plain action, threshold words)."""
     total = sum(c for _, c, _, _ in segments) or 1
     bar = ''.join(f'<i style="width:{c / total * 100:.3f}%;background:{t["status"][k]}" title="{c} {k.lower()}"></i>'
                   for k, c, _, _ in segments if c)
-    legend = ''.join(f'<div style="--dot:{t["status"][k]}"><b>{c}</b><span>{k}: {action}</span><em>{words}</em></div>'
+    legend_html = ''.join(f'<div style="--dot:{t["status"][k]}"><b>{c}</b><span>{k}: {action}</span><em>{words}</em></div>'
                      for k, c, action, words in segments)
-    m = '<br>'.join(meta)
-    return (f'<div class="ehm-hero"><div class="top"><div><h1>{title}</h1><p class="lede">{sentence}</p></div>'
-            f'<div class="meta">{m}</div></div><div class="ehm-hbar" role="img" aria-label="'
+    return ('<div class="ehm-health"><div class="ehm-hbar" role="img" aria-label="'
             + ', '.join(f'{c} {k.lower()}' for k, c, _, _ in segments)
-            + f'">{bar}</div><div class="ehm-hlegend">{legend}</div></div>')
+            + f'">{bar}</div>' + (f'<div class="ehm-hlegend">{legend_html}</div>' if legend else '') + '</div>')
 
 
 def summary_table(rows):
     body = ''.join(f'<tr><td class="q">{q}</td><td class="a">{a}</td><td class="n">{n}</td></tr>' for q, a, n in rows)
     return ('<table class="ehm-sum"><thead><tr><th>Question</th><th>In plain words</th><th>The numbers behind it</th>'
             f'</tr></thead><tbody>{body}</tbody></table>')
+
+
+ICONS = {
+    'gauge': '<path d="M10 38a18 18 0 1 1 36 0" /><path d="M14 38h4M38 38h4M28 20v4M17 26l3 3M39 26l-3 3"/>'
+             '<path d="M28 38l9-10"/><circle cx="28" cy="38" r="3.2" class="a"/>',
+    'turbine': '<circle cx="28" cy="28" r="18"/>' + ''.join(
+        f'<path d="M28 28c2-5 3-10 1-15" transform="rotate({i * 45} 28 28)"/>' for i in range(8))
+               + '<circle cx="28" cy="28" r="4.5" class="a"/>',
+    'focus': '<path d="M10 44h36"/><path d="M14 44v-3M19 44v-3M24 44v-4M29 44v-5M34 44v-8"/>'
+             '<rect x="38" y="16" width="5" height="28" rx="1" class="a"/>',
+    'stop': '<path d="M21 10h14l10 10v14L35 44H21L11 34V20z"/><path d="M28 19v12"/><circle cx="28" cy="37" r="2" class="a"/>',
+    'calendar': '<rect x="11" y="14" width="34" height="30" rx="3"/><path d="M11 22h34M20 10v7M36 10v7"/>'
+                '<rect x="30" y="31" width="8" height="7" rx="1" class="a"/>',
+    'plane': '<path d="M28 9c2 0 3 2 3 5v9l14 8v4l-14-4v8l5 4v3l-8-2-8 2v-3l5-4v-8l-14 4v-4l14-8v-9c0-3 1-5 3-5z" class="a"/>',
+}
+
+
+def icon(name, accent):
+    return (f'<svg class="ehm-icon" viewBox="0 0 56 56" aria-hidden="true" style="--accent:{accent}">'
+            f'{ICONS[name]}</svg>')
+
+
+def hero_text(t, status_label, kicker, headline, body):
+    return (f'<div class="ehm-hero-text"><div class="kicker">{pill(t, status_label)}<span>{kicker}</span></div>'
+            f'<h1>{headline}</h1><p>{body}</p></div>')
+
+
+def band_text(headline, body):
+    return f'<div class="ehm-hero-text"><h1>{headline}</h1><p>{body}</p></div>'
+
+
+def section_head(title, sub=''):
+    return f'<div class="ehm-section"><h2>{title}</h2>' + (f'<p>{sub}</p>' if sub else '') + '</div>'
+
+
+def features(items):
+    """items: (icon name, accent colour, title, text, figure or '')."""
+    cells = ''.join(f'<div>{icon(i, a)}' + (f'<b class="fig">{f}</b>' if f else '') + f'<h3>{h}</h3><p>{x}</p></div>'
+                    for i, a, h, x, f in items)
+    return f'<div class="ehm-features">{cells}</div>'
+
+
+def station_table(t, stations, names):
+    def tint(z):
+        k = min(max((abs(z) - 1.5) / 2.5, 0), 1) * 0.85
+        a, b = t['metal'].lstrip('#'), t['negative'].lstrip('#')
+        mix = [round(int(a[i:i + 2], 16) * (1 - k) + int(b[i:i + 2], 16) * k) for i in (0, 2, 4)]
+        return '#' + ''.join(f'{v:02x}' for v in mix)
+    rows = ''.join(
+        f'<tr><td><span class="sw" style="background:{tint(st["drift"])}"></span>{names[s]}'
+        f'<small>{", ".join(x["code"] for x in st["sensors"])}</small></td>'
+        f'<td class="n">{"+" if st["drift"] >= 0 else "−"}{abs(st["drift"]):.1f}σ'
+        f'<small>{st["sensors"][0]["label"]}, {st["sensors"][0]["value"]} {st["sensors"][0]["unit"]}</small></td></tr>'
+        for s, st in sorted(stations.items(), key=lambda kv: -abs(kv[1]['drift'])))
+    return (f'<table class="ehm-sum ehm-stations"><thead><tr><th>Station, sensors</th><th class="n">Drift from a healthy engine</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table>')
 
 
 def kv(rows):
@@ -363,7 +559,7 @@ td small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 @media (max-width:700px){.wrap{grid-template-columns:1fr}.stage{height:300px}.hint{display:none}}
 """
 
-ENGINE_BODY = """
+ENGINE_MARKUP = """
 <div class="wrap">
   <div class="stage" id="stage" tabindex="0" role="img" aria-label="">
     <canvas id="c"></canvas>
@@ -375,8 +571,17 @@ ENGINE_BODY = """
     <table id="tbl"><thead><tr><th>Station</th><th class="n">Drift</th></tr></thead><tbody></tbody></table>
     <div class="key"><span>Under 1.5σ</span><span class="ramp" id="ramp"></span><span>4σ or more</span></div>
   </div>
-</div>
-<script>__THREE__</script>
+</div>"""
+
+PLATE_MARKUP = """
+<div class="wrap plate">
+  <div class="stage" id="stage" tabindex="0" role="img" aria-label="" style="position:relative"><canvas id="c"></canvas>
+    <div class="tools"><button id="explode" aria-pressed="false">Exploded view</button><button id="reset">Reset view</button></div></div>
+  <div id="tip" role="tooltip"></div>
+  <table id="tbl" hidden><tbody></tbody></table><span id="ramp" hidden></span>
+</div>"""
+
+ENGINE_SCRIPT = """<script>__THREE__</script>
 <script>__BEZIER__
 const D = __DATA__, T = D.theme;
 const ORDER = ['Fan','LPC','HPC','Combustor','HPT','LPT'];
@@ -475,7 +680,7 @@ function highlight(s, at) {
     current = s; if (s && at) tip.innerHTML = `<b>${NAMES[s]}</b><br>` + D.stations[s].sensors.map(x => `${x.label}: ${x.value} ${x.unit} <span>(${fmt(x.z)})</span>`).join('<br>');
     render();
   }
-  if (s && at) { const r = stage.getBoundingClientRect();
+  if (s && at) { const r = (tip.offsetParent || stage).getBoundingClientRect();
     const x = Math.max(8, Math.min(at[0] - r.left + 14, r.width - tip.offsetWidth - 8)), y = Math.max(8, at[1] - r.top - tip.offsetHeight - 10);
     tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.add('on');
   } else tip.classList.remove('on');
@@ -524,18 +729,33 @@ document.getElementById('reset').addEventListener('click', () => { const y0 = ya
   tween(380, easeOut, k => { yaw = y0 + dy * k; pitch = p0 + (HOME.pitch - p0) * k; explode = e0 * (1 - k); applyExplode(); }); });
 
 function size() { const r = stage.getBoundingClientRect(); if (!r.width) return; renderer.setSize(r.width, r.height, false);
-  camera.aspect = r.width / r.height; camera.position.z = r.width < 520 ? 15.5 : 12.5; camera.updateProjectionMatrix(); render(); }
+  camera.aspect = r.width / r.height; camera.position.z = D.plate ? 15.2 : (r.width < 520 ? 15.5 : 12.5); camera.updateProjectionMatrix(); render(); }
 function render() { pivot.rotation.set(pitch, yaw, 0, 'XYZ'); renderer.render(scene, camera); }
 new ResizeObserver(size).observe(stage); applyExplode(); size();
 </script>"""
 
 
-def engine_html(t, engine_id, stations):
-    data = json.dumps({'engine': int(engine_id), 'stations': stations,
+PLATE_CSS = """
+:root{color-scheme:normal !important}
+html,body{background:transparent !important}
+.wrap.plate{position:relative;height:100vh;display:flex;align-items:center;justify-content:center}
+.plate .stage{width:min(100vw - 96px, 100vh - 96px);height:auto;aspect-ratio:1;border-radius:50%;background:var(--plate);
+  box-shadow:0 0 0 10px var(--plate-ring), 0 22px 36px rgba(0,0,0,.28)}
+.plate canvas{border-radius:50%}
+.plate .tools{left:50%;bottom:12%;transform:translateX(-50%);z-index:2}
+.plate .tools button{white-space:nowrap}
+.plate .tools button{background:rgba(255,255,255,.94);color:#0a0a0a;border-color:transparent}
+.plate .tools button[aria-pressed="true"]{background:#0a0a0a;color:#fff}
+"""
+
+
+def engine_html(t, engine_id, stations, plate=False):
+    data = json.dumps({'engine': int(engine_id), 'stations': stations, 'plate': plate,
                        'theme': {'dark': t['dark'], 'metal': t['metal'], 'bad': t['negative'], 'hue': t['hue'],
                                  'shell': t['shell'], 'neutral': t['neutral'], 'env': t['env'], 'shadow': t['shadow']}})
-    body = ENGINE_BODY.replace('__THREE__', THREE_JS).replace('__BEZIER__', BEZIER).replace('__DATA__', data)
-    return _frame(t, ENGINE_CSS, body)
+    body = (PLATE_MARKUP if plate else ENGINE_MARKUP) + ENGINE_SCRIPT
+    body = body.replace('__THREE__', THREE_JS).replace('__BEZIER__', BEZIER).replace('__DATA__', data)
+    return _frame(t, ENGINE_CSS + (PLATE_CSS if plate else ''), body)
 
 
 # ------------------------------------------------------------------ fleet board

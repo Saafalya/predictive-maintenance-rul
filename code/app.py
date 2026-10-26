@@ -47,7 +47,7 @@ STATION_NAME = {'Fan': 'fan', 'LPC': 'low-pressure compressor', 'HPC': 'high-pre
                 'Combustor': 'combustor', 'HPT': 'high-pressure turbine', 'LPT': 'low-pressure turbine'}
 
 st.set_page_config(page_title='Engine Health Monitor', page_icon=os.path.join(ROOT, 'code', 'static', 'mark.png'),
-                   layout='wide')
+                   layout='wide', initial_sidebar_state='collapsed')
 look = st.query_params.get('look', 'Light')
 look = look if look in ui.LOOKS else 'Light'
 
@@ -178,25 +178,37 @@ def signed(v, digits=0):
     return ('+' if v > 0 else '−' if v < 0 else '') + s
 
 
-# ---------------------------------------------------------------- sidebar
-mark_slot = st.sidebar.empty()
-picked = st.sidebar.segmented_control('Appearance', ui.LOOKS, default=look, key='look_pick')
+# ---------------------------------------------------------------- top bar
+FLEETS = {'FD001': 'Fleet FD001', 'FD003': 'Fleet FD003'}
+VIEWS = ['Check an engine', 'Fleet board', 'Score your data', 'Model comparison']
+with st.container(key='nav'):
+    c_mark, c_views, c_fleet, c_engine, c_set = st.columns([2.3, 4.8, 1.4, 1.3, 1.1], vertical_alignment='center')
+    with c_views:
+        view = st.segmented_control('View', VIEWS, default=VIEWS[0], key='view', label_visibility='collapsed') or VIEWS[0]
+    with c_fleet:
+        subset = st.selectbox('Fleet', list(FLEETS), format_func=FLEETS.get, key='fleet_pick', label_visibility='collapsed')
+    _test, _ = load_test(subset)
+    units = sorted(int(u) for u in _test['unit'].unique())
+    longest = int(_test.groupby('unit').size().idxmax())
+    with c_engine:
+        unit = st.selectbox('Engine', units, index=units.index(longest), format_func=lambda u: f'Engine {u}',
+                            key=f'engine_{subset}', label_visibility='collapsed')
+    with c_set:
+        with st.popover('Settings', use_container_width=True):
+            picked = st.segmented_control('Appearance', ui.LOOKS, default=look, key='look_pick', width='stretch')
+            red = st.slider('Critical at or below', 5, 60, 25, format='%d cycles')
+            amber = st.slider('Plan maintenance at or below', red + 5, 125, max(red + 5, 60), format='%d cycles')
+            st.caption('CNN-LSTM with additive attention, seed 0, trained on NASA C-MAPSS. Remaining life is capped '
+                       'at 125 cycles. Drift compares each sensor’s last 10 cycles with its first 30 across all '
+                       'training engines. A cycle is one flight.')
 if picked and picked != look:
     look = picked
     st.query_params['look'] = look
 t = ui.THEMES[look]
 st.markdown(ui.css(t), unsafe_allow_html=True)
 components.html(ui.theme_sync_html(t['dark']), height=0)
-subset = st.sidebar.radio('Fleet', ['FD001', 'FD003'],
-                          format_func=lambda s: {'FD001': 'FD001, one fault mode', 'FD003': 'FD003, two fault modes'}[s])
-mark_slot.markdown(ui.mark_html(t, subset), unsafe_allow_html=True)
-st.sidebar.markdown('**Maintenance thresholds**')
-red = st.sidebar.slider('Critical at or below (cycles)', 5, 60, 25)
-amber = st.sidebar.slider('Plan maintenance at or below (cycles)', red + 5, 125, max(red + 5, 60))
-st.sidebar.markdown(
-    '<p class="ehm-side-note">Model: CNN-LSTM with additive attention, seed 0, trained on NASA C-MAPSS. '
-    'Remaining life is capped at 125 cycles, as in training. Drift compares each sensor’s last 10 cycles '
-    'with its first 30 across all training engines.</p>', unsafe_allow_html=True)
+with c_mark:
+    st.markdown(ui.mark_html(t, subset), unsafe_allow_html=True)
 
 if not os.path.exists(os.path.join(MODEL_DIR, f'cnn_lstm_att_{subset}.pt')):
     with st.spinner(f'First run for {subset}: training the model once (1-3 minutes). It is saved afterwards.'):
@@ -281,78 +293,82 @@ summary = [
 ]
 assert n_crit + n_plan + n_ok == len(fleet) and n_late + n_early <= len(fleet)
 
-with st.container(border=True, key='card-title'):
-    st.markdown(ui.title_card(t, f'Fleet {subset}', sentence, segments,
-                              [f'NASA C-MAPSS {subset}', 'CNN-LSTM + attention model']), unsafe_allow_html=True)
-    with st.expander('Summary in plain words', expanded=True):
-        st.markdown(ui.summary_table(summary), unsafe_allow_html=True)
-        st.caption('Written automatically from the model’s predictions and the sensor data on this page. '
-                   'It updates when you change the fleet or the thresholds. A cycle is one flight.')
-
-tab_engine, tab_fleet, tab_upload, tab_models = st.tabs(
-    ['Check an engine', 'Fleet board', 'Score your own data', 'Model comparison'])
+icon_col = {'Critical': t['status']['Critical'], 'Plan maintenance': t['status']['Plan maintenance'],
+            'Healthy': t['status']['Healthy']}
 
 # ---------------------------------------------------------------- engine view
-with tab_engine:
-    units = sorted(test['unit'].unique())
-    longest = int(test.groupby('unit').size().idxmax())
-    head, pick = st.columns([3, 1.1], vertical_alignment='bottom')
-    with pick:
-        unit = st.selectbox('Engine', units, index=units.index(longest), format_func=lambda u: f'Engine {u}')
-
+if view == 'Check an engine':
     g = test[test['unit'] == unit]
     X, padded = engine_windows(scale(g))
     preds, att = predict(model, X)
     p_now, t_now = float(preds[-1]), float(true_rul[unit - 1])
     label, advice = status(p_now, red, amber)
     stations, z = station_drift(g, mu, sd)
-    worst = max(STATIONS, key=lambda s: abs(stations[s]['drift']))
+    ranked_st = sorted(STATIONS, key=lambda k: -abs(stations[k]['drift']))
+    worst, second = ranked_st[0], ranked_st[1]
     ws = stations[worst]['sensors'][0]
     err = round(p_now) - round(min(t_now, CAP))
-
-    with head:
-        st.markdown(
-            f'<div class="ehm-title"><h2>Engine {unit} &nbsp;{ui.pill(t, label)}</h2>'
-            f'<p>Predicted <b>{p_now:.0f} cycles</b> left, against {t_now:.0f} actual. The {STATION_NAME[worst]} '
-            f'shows the most wear: {lead_lower(ws["label"])} is {signed(ws["z"], 1)}σ from a healthy engine.</p></div>',
-            unsafe_allow_html=True)
-
+    late = err > 0
     order = (f'WORK ORDER: ENGINE {unit}, FLEET {subset}\n'
              f'Generated {dt.datetime.now():%Y-%m-%d %H:%M}\n\n'
              f'Status: {label}. {advice}\n'
              f'Predicted remaining life: {p_now:.0f} cycles (thresholds: critical {red}, plan {amber})\n'
              f'Cycles flown so far: {len(g)}\n\n'
              f'Inspect first, by sensor drift from a healthy engine:\n'
-             + ''.join(f'  {s:<10} {signed(stations[s]["drift"], 1):>6} sigma  '
-                       f'({stations[s]["sensors"][0]["label"]}, {stations[s]["sensors"][0]["value"]} '
-                       f'{stations[s]["sensors"][0]["unit"]})\n'
-                       for s in sorted(STATIONS, key=lambda s: -abs(stations[s]['drift'])))
+             + ''.join(f'  {s_:<10} {signed(stations[s_]["drift"], 1):>6} sigma  '
+                       f'({stations[s_]["sensors"][0]["label"]}, {stations[s_]["sensors"][0]["value"]} '
+                       f'{stations[s_]["sensors"][0]["unit"]})\n' for s_ in ranked_st)
              + '\nModel: CNN-LSTM + attention, seed 0. Prediction only; confirm with a borescope inspection.\n')
-    with pick:
-        st.download_button('Download work order', order, f'work_order_engine_{unit}_{subset}.txt',
-                           type='primary', width='stretch')
 
-    map_col, life_col = st.columns([2.75, 1], gap='medium')
-    with map_col:
-        with st.container(border=True, key='card-1'):
-            st.markdown('### Where the wear shows')
-            components.html(ui.engine_html(t, unit, stations), height=418)
+    # --- the band: engine on its plate, the answer beside it
+    with st.container(key='hero'):
+        plate_col, text_col = st.columns([1.05, 1], gap='large')
+        with plate_col:
+            components.html(ui.engine_html(t, unit, stations, plate=True), height=620)
+        with text_col:
+            st.markdown(ui.hero_text(
+                t, label, f'Engine {unit}, fleet {subset}',
+                f'Engine {unit} has about {plural(round(p_now), "flight", "flights")} left',
+                f'{advice} The {STATION_NAME[worst]} shows the most wear: {lead_lower(ws["label"])} is '
+                f'{signed(ws["z"], 1)}σ from a healthy engine. Turn the engine to see where; red means more drift.'),
+                unsafe_allow_html=True)
+            st.download_button('DOWNLOAD WORK ORDER', order, f'work_order_engine_{unit}_{subset}.txt')
+
+    # --- what the model sees, in three parts
+    st.markdown(ui.section_head(f'What the model sees in engine {unit}',
+                                'Three readings behind the prediction, with the evidence for each below.'),
+                unsafe_allow_html=True)
+    att_last, att5 = float(att[-1][-1]), float(att[-1][-5:].sum())
+    st.markdown(ui.features([
+        ('gauge', t['hue'], 'Remaining life',
+         f'{round(p_now)} flights predicted against {round(t_now)} actual, so the call was '
+         + ('exact.' if err == 0 else f'{abs(err)} {"flight" if abs(err) == 1 else "flights"} {"late" if late else "early"}.')
+         + f' It has flown {len(g)} so far.', ''),
+        ('turbine', t['negative'], 'Where the wear shows',
+         f'The {STATION_NAME[worst]} has drifted most ({signed(stations[worst]["drift"], 1)}σ), followed by the '
+         f'{STATION_NAME[second]} ({signed(stations[second]["drift"], 1)}σ). Inspect those first.', ''),
+        ('focus', t['hue'], 'How it decided',
+         f'It put {att_last:.0%} of its attention on the latest flight and {att5:.0%} on the last five, '
+         'so fresh readings drive the answer.', ''),
+    ]), unsafe_allow_html=True)
+
+    life_col, st_col = st.columns([1, 1.7], gap='medium')
     with life_col:
         with st.container(border=True, key='card-2'):
             st.markdown('### Remaining life')
             components.html(ui.dial_html(t, p_now, t_now, red, amber, CAP), height=212)
-            late = err > 0
             err_col = t['negative'] if late else t['text']
             err_txt = ('on target' if err == 0 else
-                       f'<span style="color:{err_col}">{signed(err)}</span>'
-                       f'<small>{"late" if late else "early"}</small>')
-            st.markdown(ui.kv([('Actual cycles left', f'{t_now:.0f}'),
-                               ('Prediction error', err_txt),
+                       f'<span style="color:{err_col}">{signed(err)}</span><small>{"late" if late else "early"}</small>')
+            st.markdown(ui.kv([('Actual cycles left', f'{t_now:.0f}'), ('Prediction error', err_txt),
                                ('Cycles flown so far', f'{len(g)}'),
                                ('Next threshold', f'{red if p_now > red else 0}<small>cycles</small>')]),
                         unsafe_allow_html=True)
-            st.caption(advice)
-
+    with st_col:
+        with st.container(border=True, key='card-1'):
+            st.markdown('### Drift by station')
+            st.markdown(ui.station_table(t, stations, {k: STATION_NAME[k].capitalize() for k in STATIONS}),
+                        unsafe_allow_html=True)
     traj_col, att_col = st.columns([2, 1], gap='medium')
     with traj_col:
         with st.container(border=True, key='card-3'):
@@ -409,8 +425,29 @@ with tab_engine:
         btxt = alt.Chart(base).mark_text(align='right', dy=-6, fontSize=11, color=t['muted']).encode(x='x:Q', y='y:Q', text='t:N')
         st.altair_chart(ui.styled(t, (brule + btxt + line).properties(height=220)), width='stretch')
 
+
+    # --- the fleet, in plain words, below the engine
+    st.markdown('<div class="ehm-gap"></div>', unsafe_allow_html=True)
+    st.markdown(ui.section_head(f'Fleet {subset} in plain words', sentence), unsafe_allow_html=True)
+    st.markdown(ui.health_bar(t, segments, legend=False), unsafe_allow_html=True)
+    st.markdown(ui.features([
+        ('stop', icon_col['Critical'], 'Stop flying now', f'{red} flights or fewer left. ' + (
+            f'Most urgent: {"engine" if len(crit_ids) == 1 else "engines"} {name_list(crit_ids)}.' if crit_ids else 'No engine is inside this limit.'), str(n_crit)),
+        ('calendar', icon_col['Plan maintenance'], 'Book a shop visit', f'{red + 1} to {amber} flights left. ' + (
+            f'Next in line: {"engine" if len(plan_ids) == 1 else "engines"} {name_list(plan_ids)}.' if plan_ids else 'None at the moment.'), str(n_plan)),
+        ('plane', icon_col['Healthy'], 'Keep flying', f'More than {amber} flights left. Keep monitoring as usual.', str(n_ok)),
+    ]), unsafe_allow_html=True)
+    with st.container(border=True, key='card-summary'):
+        st.markdown('### Seven questions, answered')
+        st.markdown(ui.summary_table(summary), unsafe_allow_html=True)
+        st.caption('Written automatically from the model’s predictions and the sensor data on this page. '
+                   'It updates when you change the fleet or the thresholds.')
+
 # ---------------------------------------------------------------- fleet board
-with tab_fleet:
+if view == 'Fleet board':
+    with st.container(key='band'):
+        st.markdown(ui.band_text(f'{plural(n_crit, "engine", "engines")} should stop flying now', sentence), unsafe_allow_html=True)
+    st.markdown(ui.health_bar(t, segments), unsafe_allow_html=True)
     with st.container(border=True, key='card-6'):
         st.markdown('### Every engine, most urgent first')
         board = fleet.sort_values(['Predicted', 'Engine'])
@@ -438,12 +475,16 @@ with tab_fleet:
                          column_config={'Engine': st.column_config.NumberColumn(format='%d')})
 
 # ---------------------------------------------------------------- upload
-with tab_upload:
+if view == 'Score your data':
+    with st.container(key='band'):
+        st.markdown(ui.band_text('Score your own sensor file',
+                                 f'Upload readings from any engine and the {subset} model predicts how many flights each one has left.'),
+                    unsafe_allow_html=True)
     with st.container(border=True, key='card-9'):
         st.markdown('### Score a sensor file')
         st.markdown('Upload readings in the C-MAPSS format: a space-separated text file with 26 columns '
                     '(engine id, cycle, 3 operating settings, 21 sensors), like `test_FD001.txt`. '
-                    f'The **{subset}** model from the sidebar scores it.')
+                    f'The **{subset}** model chosen in the top bar scores it.')
         up = st.file_uploader('Sensor file (.txt or .csv)', type=['txt', 'csv'])
         if up is not None:
             try:
@@ -461,7 +502,11 @@ with tab_upload:
                 st.error(f'Could not read that file. It needs 26 space-separated columns per row. ({e})')
 
 # ---------------------------------------------------------------- models
-with tab_models:
+if view == 'Model comparison':
+    with st.container(key='band'):
+        st.markdown(ui.band_text('Five models, one benchmark',
+                                 'How the proposed CNN-LSTM with attention compares with the baselines on the test engines.'),
+                    unsafe_allow_html=True)
     with st.container(border=True, key='card-10'):
         st.markdown('### Test error by model')
         st.caption('From the full experiment in results/results.json: mean ± standard deviation over 5 seeds. '
