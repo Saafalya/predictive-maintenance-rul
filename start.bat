@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title Predictive Maintenance - C-MAPSS RUL
+title EnginePulse - C-MAPSS RUL
 
 REM Always run from the folder this file lives in (the repo root)
 cd /d "%~dp0"

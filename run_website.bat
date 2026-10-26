@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title Engine Health Monitor - website
+title EnginePulse - website
 cd /d "%~dp0"
 
 where python >nul 2>nul

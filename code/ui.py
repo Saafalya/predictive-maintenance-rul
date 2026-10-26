@@ -1,4 +1,4 @@
-"""Visual layer for the Engine Health Monitor.
+"""Visual layer for EnginePulse.
 
 Style: achromatic ledger. The chrome is neutral ink; the one hue marks the prediction and
 status colours appear only on status. Three looks share every token name: Light, Graphite
@@ -339,6 +339,64 @@ p, li { font-size: 14px; }
   .ehm-features { grid-template-columns: 1fr; gap: 36px; }
   .st-key-nav .stButtonGroup > div { justify-content: flex-start; gap: 18px; overflow-x: auto; }
 }
+
+/* ---------- EnginePulse: depth and polished metal ---------- */
+.ep-logo { height: 44px !important; width: 173px !important; max-width: none !important; display: block; }
+.st-key-nav [data-testid="stMarkdownContainer"]:has(.ep-logo) { overflow: visible; }
+.st-key-nav { width: 100vw !important; max-width: 100vw !important; margin-left: calc(50% - 50vw) !important;
+  padding: 14px max(2.5rem, calc((100vw - 1240px) / 2 + 2.5rem)) !important; border-bottom: 0 !important;
+  background: __NAV__; box-shadow: inset 0 1px 0 __HI__, inset 0 -1px 0 __LO__, 0 10px 24px __DROP__; }
+.st-key-nav .stButtonGroup button[aria-checked="true"] { box-shadow: inset 0 -2px 0 __RULE__ !important; }
+
+/* bevelled controls in the bar */
+.st-key-nav .react-aria-ComboBox > [role="group"], .st-key-nav [data-testid="stPopover"] button {
+  background: __BTN2__ !important; border: 1px solid __BTN2_EDGE__ !important;
+  box-shadow: inset 0 1px 0 __BTN2_HI__, 0 2px 6px __BTN2_DROP__ !important; }
+.st-key-nav .react-aria-ComboBox input, .st-key-nav [data-testid="stPopover"] button p { color: var(--text) !important; }
+
+/* the primary: polished chrome with a light sweep on hover */
+.st-key-hero .stDownloadButton button, .stDownloadButton button[kind="primary"] {
+  position: relative; overflow: hidden; border-radius: 12px !important; min-height: 48px; padding: 0 26px;
+  border: 1px solid #0b0c0e !important;
+  background: linear-gradient(180deg, #ffffff 0%, #e4e7eb 42%, #aeb4bd 56%, #eef0f3 100%) !important;
+  box-shadow: inset 0 1px 0 #ffffff, inset 0 -2px 3px rgba(0,0,0,.18), 0 8px 18px rgba(0,0,0,.35) !important; }
+.st-key-hero .stDownloadButton button p, .stDownloadButton button[kind="primary"] p {
+  color: #15181c !important; font-weight: 600 !important; letter-spacing: .02em; }
+.st-key-hero .stDownloadButton button::after, .stDownloadButton button[kind="primary"]::after {
+  content: ""; position: absolute; inset: -2px; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.85) 50%, transparent 65%);
+  transform: translateX(-120%); transition: transform 750ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .st-key-hero .stDownloadButton button:hover, .stDownloadButton button[kind="primary"]:hover {
+    background: linear-gradient(180deg, #ffffff 0%, #eceef1 42%, #b9bfc7 56%, #f4f5f7 100%) !important; }
+  .st-key-hero .stDownloadButton button:hover::after, .stDownloadButton button[kind="primary"]:hover::after { transform: translateX(120%); }
+  .st-key-hero .stDownloadButton button:hover p { color: #15181c !important; }
+}
+.st-key-hero .stDownloadButton button:active { transform: scale(0.97); box-shadow: inset 0 1px 0 #fff, 0 3px 8px rgba(0,0,0,.35) !important; }
+
+/* secondary buttons: a quieter bevel */
+.stDownloadButton button:not([kind="primary"]), .stButton button { background: __BTN2__ !important; border: 1px solid __BTN2_EDGE__ !important;
+  box-shadow: inset 0 1px 0 __BTN2_HI__, 0 2px 6px __BTN2_DROP__ !important; }
+.st-key-hero .stDownloadButton button:not([kind="primary"]) { background: linear-gradient(180deg, #ffffff 0%, #e4e7eb 42%, #aeb4bd 56%, #eef0f3 100%) !important;
+  border: 1px solid #0b0c0e !important; box-shadow: inset 0 1px 0 #ffffff, inset 0 -2px 3px rgba(0,0,0,.18), 0 8px 18px rgba(0,0,0,.35) !important; }
+
+/* cards with real elevation and a lit top edge */
+[class*="st-key-card-"] { background: __CARD__ !important;
+  box-shadow: inset 0 1px 0 __CARD_HI__, 0 1px 2px __CARD_DROP1__, 0 14px 30px __CARD_DROP2__; }
+
+/* the band: a lit top edge, a shadowed bottom */
+.st-key-hero, .st-key-band { box-shadow: inset 0 1px 0 rgba(255,255,255,.07), inset 0 -1px 0 rgba(0,0,0,.5); }
+
+/* polished type: chrome on the dark band, steel on the page */
+.ehm-hero-text h1, .ehm-hero-text h1 * {
+  background: linear-gradient(180deg, #ffffff 0%, #eef0f3 40%, #a9b0b9 60%, #f3f5f7 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent !important; -webkit-text-fill-color: transparent; }
+.ehm-features .fig { background: __FIG__; -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-fill-color: transparent; }
+.ehm-pill { box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+@media (prefers-reduced-motion: reduce) {
+  .st-key-hero .stDownloadButton button::after, .stDownloadButton button[kind="primary"]::after { display: none; }
+}
 @media (max-width: 640px) {
   .block-container { padding: 4.2rem 1rem 3rem; }
   .ehm-kpis { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
@@ -353,7 +411,34 @@ p, li { font-size: 14px; }
 }
 </style>
 """
+    m = METAL[t['dark']] if t['dark'] else METAL['light']
+    if t['dark'] and t['ground'] == '#000000':
+        m = METAL['black']
+    for k, v in m.items():
+        s = s.replace(f'__{k}__', v)
     return s.replace('__FACES__', FONT_FACES).replace('__VARS__', _vars(t)).replace('__STACK__', FONT_STACK)
+
+
+METAL = {
+    'light': dict(NAV='linear-gradient(180deg, #ffffff 0%, #f1f3f5 46%, #e3e7eb 54%, #f5f6f8 100%)', HI='#ffffff',
+                  LO='rgba(0,0,0,.10)', DROP='rgba(15,27,38,.10)', RULE='#0a0a0a',
+                  BTN2='linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%)', BTN2_EDGE='#c9ced5', BTN2_HI='#ffffff',
+                  BTN2_DROP='rgba(0,0,0,.08)', CARD='linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%)', CARD_HI='#ffffff',
+                  CARD_DROP1='rgba(15,27,38,.06)', CARD_DROP2='rgba(15,27,38,.07)',
+                  FIG='linear-gradient(180deg, #59616b 0%, #1d2228 45%, #0b0d10 55%, #4a525c 100%)'),
+    True: dict(NAV='linear-gradient(180deg, #3a3f46 0%, #24282d 48%, #1b1e22 52%, #2a2e34 100%)', HI='rgba(255,255,255,.22)',
+               LO='rgba(0,0,0,.6)', DROP='rgba(0,0,0,.45)', RULE='#d9dde3',
+               BTN2='linear-gradient(180deg, #33373d 0%, #1f2226 100%)', BTN2_EDGE='#0b0c0e', BTN2_HI='rgba(255,255,255,.14)',
+               BTN2_DROP='rgba(0,0,0,.45)', CARD='linear-gradient(180deg, #212327 0%, #1a1b1e 100%)', CARD_HI='rgba(255,255,255,.07)',
+               CARD_DROP1='rgba(0,0,0,.4)', CARD_DROP2='rgba(0,0,0,.35)',
+               FIG='linear-gradient(180deg, #ffffff 0%, #e9ecf0 42%, #9aa1aa 58%, #eef0f3 100%)'),
+    'black': dict(NAV='linear-gradient(180deg, #2c3036 0%, #16181b 48%, #0d0e10 52%, #1c1f23 100%)', HI='rgba(255,255,255,.18)',
+                  LO='rgba(0,0,0,.8)', DROP='rgba(0,0,0,.6)', RULE='#d9dde3',
+                  BTN2='linear-gradient(180deg, #2a2d32 0%, #141618 100%)', BTN2_EDGE='#000000', BTN2_HI='rgba(255,255,255,.12)',
+                  BTN2_DROP='rgba(0,0,0,.6)', CARD='linear-gradient(180deg, #151618 0%, #0e0e0f 100%)', CARD_HI='rgba(255,255,255,.06)',
+                  CARD_DROP1='rgba(0,0,0,.6)', CARD_DROP2='rgba(0,0,0,.5)',
+                  FIG='linear-gradient(180deg, #ffffff 0%, #e9ecf0 42%, #9aa1aa 58%, #eef0f3 100%)'),
+}
 
 
 def theme_sync_html(dark):
@@ -370,13 +455,11 @@ try {{
 </script>"""
 
 
+NAV_LOGO = {False: _read('brand/nav_steel.svg', 'r'), True: _read('brand/nav_chrome.svg', 'r')}
+
+
 def mark_html(t, fleet):
-    blades = ''.join(f'<path d="M16 16 C 17.6 12, 18.6 7.5, 16.6 3.4 C 15.4 7, 15 11.5, 16 16Z" fill="{t["text"]}" '
-                     f'transform="rotate({i * 45} 16 16)"/>' for i in range(8))
-    svg = (f'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14.5" fill="{t["surface"]}" '
-           f'stroke="{t["text"]}" stroke-width="1.6"/>{blades}<circle cx="16" cy="16" r="3.2" fill="{t["hue"]}"/></svg>')
-    return (f'<div class="ehm-mark">{svg}<div><b>Engine Health Monitor</b>'
-            f'<span>C-MAPSS fleet {fleet}</span></div></div>')
+    return f'<div class="ehm-mark">{NAV_LOGO[t["dark"]]}</div>'
 
 
 def pill(t, label):
@@ -739,12 +822,14 @@ PLATE_CSS = """
 :root{color-scheme:normal !important}
 html,body{background:transparent !important}
 .wrap.plate{position:relative;height:100vh;display:flex;align-items:center;justify-content:center}
-.plate .stage{width:min(100vw - 96px, 100vh - 96px);height:auto;aspect-ratio:1;border-radius:50%;background:var(--plate);
-  box-shadow:0 0 0 10px var(--plate-ring), 0 22px 36px rgba(0,0,0,.28)}
+.plate .stage{width:min(100vw - 96px, 100vh - 96px);height:auto;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 34% 28%, #2b3037 0%, var(--plate) 60%, #030405 100%);
+  box-shadow:0 0 0 9px #2a2e34, 0 0 0 10px #59606a, 0 0 0 11px #15181b, 0 26px 44px rgba(0,0,0,.45), inset 0 2px 1px rgba(255,255,255,.08)}
 .plate canvas{border-radius:50%}
 .plate .tools{left:50%;bottom:12%;transform:translateX(-50%);z-index:2}
 .plate .tools button{white-space:nowrap}
-.plate .tools button{background:rgba(255,255,255,.94);color:#0a0a0a;border-color:transparent}
+.plate .tools button{background:linear-gradient(180deg,#ffffff 0%,#e4e7eb 45%,#b4bac2 56%,#eef0f3 100%);color:#15181c;border-color:#0b0c0e;
+  box-shadow:inset 0 1px 0 #fff, 0 4px 10px rgba(0,0,0,.45)}
 .plate .tools button[aria-pressed="true"]{background:#0a0a0a;color:#fff}
 """
 

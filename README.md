@@ -1,4 +1,8 @@
-# AI-Based Predictive Maintenance Using Multivariate Sensor Data
+# EnginePulse
+
+![EnginePulse](brand/C_lockup_chrome.png)
+
+**AI-Based Predictive Maintenance Using Multivariate Sensor Data**
 
 Deep Learning ESE project (CA3), Symbiosis Institute of Technology, Pune, AY 2026-27.
 
@@ -55,6 +59,10 @@ pip install -r requirements.txt
 python code/run_experiments.py      # ~75 min on a 4-core CPU, no GPU needed
 cd report && npm install docx && node build_report.js
 ```
+
+## Brand
+
+Logo files are in `brand/`: the script signature (chrome, steel for light grounds, champagne), a round seal, a horizontal lockup and an app icon, each as SVG and PNG. The lettering is Pinyon Script (SIL Open Font License), converted to outlines so the files need no font installed.
 
 ## Website
 

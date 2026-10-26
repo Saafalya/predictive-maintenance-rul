@@ -1,4 +1,4 @@
-"""Engine Health Monitor: local web app for the C-MAPSS RUL project.
+"""EnginePulse: local web app for the C-MAPSS RUL project.
 
 Run with:  streamlit run code/app.py      (or double-click run_website.bat)
 
@@ -46,7 +46,7 @@ STATIONS = ['Fan', 'LPC', 'HPC', 'Combustor', 'HPT', 'LPT']
 STATION_NAME = {'Fan': 'fan', 'LPC': 'low-pressure compressor', 'HPC': 'high-pressure compressor',
                 'Combustor': 'combustor', 'HPT': 'high-pressure turbine', 'LPT': 'low-pressure turbine'}
 
-st.set_page_config(page_title='Engine Health Monitor', page_icon=os.path.join(ROOT, 'code', 'static', 'mark.png'),
+st.set_page_config(page_title='EnginePulse', page_icon=os.path.join(ROOT, 'code', 'static', 'mark.png'),
                    layout='wide', initial_sidebar_state='collapsed')
 look = st.query_params.get('look', 'Light')
 look = look if look in ui.LOOKS else 'Light'
@@ -309,7 +309,7 @@ if view == 'Check an engine':
     ws = stations[worst]['sensors'][0]
     err = round(p_now) - round(min(t_now, CAP))
     late = err > 0
-    order = (f'WORK ORDER: ENGINE {unit}, FLEET {subset}\n'
+    order = (f'ENGINEPULSE WORK ORDER: ENGINE {unit}, FLEET {subset}\n'
              f'Generated {dt.datetime.now():%Y-%m-%d %H:%M}\n\n'
              f'Status: {label}. {advice}\n'
              f'Predicted remaining life: {p_now:.0f} cycles (thresholds: critical {red}, plan {amber})\n'
@@ -332,7 +332,7 @@ if view == 'Check an engine':
                 f'{advice} The {STATION_NAME[worst]} shows the most wear: {lead_lower(ws["label"])} is '
                 f'{signed(ws["z"], 1)}σ from a healthy engine. Turn the engine to see where; red means more drift.'),
                 unsafe_allow_html=True)
-            st.download_button('DOWNLOAD WORK ORDER', order, f'work_order_engine_{unit}_{subset}.txt')
+            st.download_button('Download work order', order, f'enginepulse_work_order_engine_{unit}_{subset}.txt', type='primary')
 
     # --- what the model sees, in three parts
     st.markdown(ui.section_head(f'What the model sees in engine {unit}',
