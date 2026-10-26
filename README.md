@@ -39,6 +39,8 @@ Metrics: RMSE and the asymmetric PHM08 score (late predictions are penalised mor
 code/pdm.py               data pipeline, models, training loop
 code/run_experiments.py   all experiments + figures -> results/results.json
 code/make_figures.py      rebuild figures only (retrains the seed-0 model, ~1 min)
+code/app.py               local website (Streamlit) for exploring predictions
+models/                   saved seed-0 CNN-LSTM + Attention weights for FD001 and FD003
 data/CMAPSS/              FD001 and FD003 (NASA C-MAPSS)
 report/                   Word report, its build script and figures
 results/                  experiment outputs
@@ -46,11 +48,31 @@ results/                  experiment outputs
 
 ## Run
 
+On Windows, double-click `start.bat` for a menu. Or:
+
 ```bash
 pip install -r requirements.txt
 python code/run_experiments.py      # ~75 min on a 4-core CPU, no GPU needed
 cd report && npm install docx && node build_report.js
 ```
+
+## Website
+
+Double-click `run_website.bat` on Windows, or run:
+
+```bash
+pip install -r requirements.txt
+streamlit run code/app.py
+```
+
+It opens at http://localhost:8501 and has four tabs:
+
+- **Check an engine**: pick a test engine to see its predicted cycles left, a maintenance call (healthy, plan maintenance, critical), how the prediction changed over its life, its raw sensor readings and where the attention layer looked.
+- **Fleet overview**: all 100 test engines, predicted vs. actual, sorted by urgency.
+- **Try your own data**: upload a C-MAPSS-format sensor file and download predictions.
+- **Model comparison**: the five-model results from `results/results.json`.
+
+The maintenance thresholds are adjustable in the sidebar. The site uses the saved models in `models/`; if they are missing it trains them once on first launch.
 
 ## Dataset
 

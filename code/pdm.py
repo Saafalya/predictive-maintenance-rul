@@ -5,7 +5,8 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-DATA_DIR = __file__.rsplit('/code/', 1)[0] + '/data/CMAPSS'
+import os
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'CMAPSS')
 COLS = ['unit', 'cycle', 'os1', 'os2', 'os3'] + [f's{i}' for i in range(1, 22)]
 # Constant or near-constant in FD001/FD003, so they carry no degradation signal.
 DROP = ['s1', 's5', 's6', 's10', 's16', 's18', 's19']
