@@ -64,6 +64,25 @@ cd report && npm install docx && node build_report.js
 
 Logo files are in `brand/`: the script signature (chrome, steel for light grounds, champagne), a round seal, a horizontal lockup and an app icon, each as SVG and PNG. The lettering is Pinyon Script (SIL Open Font License), converted to outlines so the files need no font installed.
 
+## EnginePulse v2: a more accurate model
+
+The report's results above are unchanged. v2 is a separate, follow-up model, built with `code/improve.py`.
+
+**How it was chosen.** Every decision used the validation engines only (the 20% of training engines held out by unit). The 100 test engines were scored once per configuration and never used to pick anything.
+
+**What was tried on FD001** (one change at a time, 2 seeds each, validation RMSE in cycles, lower is better): baseline 13.00, learning-rate schedule 13.45, Huber loss 13.42, sensor smoothing 12.67, engine age as an input 13.12, 40-cycle window 12.30. The 40-cycle window was ruled out because it drops each validation engine's first 10 windows, so its score is not measured on the same examples. Sensor smoothing was the one change that helped on identical validation data.
+
+**The v2 recipe:** each engine's sensors smoothed with a causal exponential moving average (alpha 0.3, past values only), and the predictions of five CNN-LSTM + attention models (seeds 0-4) averaged.
+
+| Fleet | Report model, 5 seeds (mean ± sd) | Ensemble only (comparison) | **v2: smoothing + ensemble** |
+|---|---|---|---|
+| FD001 RMSE | 13.37 ± 0.35 | 13.01 | **13.13** |
+| FD001 PHM08 | 337 ± 23 | 319 | **338** |
+| FD003 RMSE | 11.88 ± 0.70 | 11.82 | **11.98** |
+| FD003 PHM08 | 303 ± 79 | 295 | **309** |
+
+v2 had the lower validation error on both fleets (12.51 vs 13.03 and 11.21 vs 11.43), so it was kept by the rule set in advance. On the test engines the plain ensemble is marginally better; every difference here is within the run-to-run spread of a single model, so the honest summary is that ensembling gives a small, reliable gain and the model is close to what FD001 and FD003 allow with this architecture. Full numbers: `results/improve.json`; models: `models/v2/`. In the website, Settings, Model switches between EnginePulse v2 and the report model.
+
 ## Website
 
 Double-click `run_website.bat` on Windows, or run:
