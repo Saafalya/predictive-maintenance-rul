@@ -155,10 +155,15 @@ if __name__ == '__main__':
                 log(subset, f'{name:<18}', f"val {r['val_rmse']:.2f}", f"test {r['test_rmse_mean']:.2f}", f"epochs {r['epochs']}")
     elif mode == 'final':
         cfg = json.loads(os.environ.get('EP_RECIPE', '{}'))
+        name = os.environ.get('EP_NAME', 'v2')
         for subset in subsets:
             r, runs, data = run_config(subset, cfg, seeds=[0, 1, 2, 3, 4])
             r['recipe'] = cfg
-            save(f'final/{subset}', r)
+            save(f'{name}/{subset}', r)
+            if name != 'v2':
+                log(subset, name, f"val {r['val_rmse']:.2f}", f"test mean {r['test_rmse_mean']:.2f}",
+                    f"ensemble {r['ensemble']['rmse']:.2f} / PHM08 {r['ensemble']['score']:.0f}")
+                continue
             d = os.path.join(ROOT, 'models', 'v2'); os.makedirs(d, exist_ok=True)
             for i, run in enumerate(runs):
                 torch.save(run['model'].state_dict(), os.path.join(d, f'{subset}_seed{i}.pt'))

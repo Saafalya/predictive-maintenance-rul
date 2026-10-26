@@ -61,18 +61,45 @@ look = look if look in ui.LOOKS else 'Light'
 
 
 # ---------------------------------------------------------------- data + model
-def scaler(subset):
-    """Same min-max scaling as pdm.load (fitted on the seed-0 training engines only)."""
+V2_DIR = os.path.join(MODEL_DIR, 'v2')
+V2_SEEDS = 5
+V2_ALPHA = 0.3      # exponential smoothing of each engine's sensors, past values only
+
+
+def has_v2(subset):
+    return all(os.path.exists(os.path.join(V2_DIR, f'{subset}_seed{i}.pt')) for i in range(V2_SEEDS))
+
+
+def scaler(subset, kind='v1'):
+    """Min-max scaling fitted on the seed-0 training engines only, as in training.
+    v2 smooths each engine's sensors first (past values only), exactly as it was trained."""
+    alpha = V2_ALPHA if kind == 'v2' else None
     train = pdm.read(f'train_{subset}.txt')
+    if alpha:
+        train[pdm.SENSORS] = train.groupby('unit')[pdm.SENSORS].transform(lambda c: c.ewm(alpha=alpha, adjust=False).mean())
     units = train['unit'].unique()
     val_units = np.random.default_rng(0).choice(units, int(len(units) * 0.2), replace=False)
     fit = train[~train['unit'].isin(val_units)]
     lo, hi = fit[pdm.SENSORS].min(), fit[pdm.SENSORS].max()
-    return lambda df: ((df[pdm.SENSORS] - lo) / (hi - lo + 1e-8)).values.astype(np.float32)
+
+    def scale(engine_df):          # one engine at a time
+        d = engine_df[pdm.SENSORS]
+        if alpha:
+            d = d.ewm(alpha=alpha, adjust=False).mean()
+        return ((d - lo) / (hi - lo + 1e-8)).values.astype(np.float32)
+    return scale
 
 
 @st.cache_resource(show_spinner=False)
-def get_model(subset):
+def get_model(subset, kind='v1'):
+    """A list of models: one for the report model, five for the v2 ensemble."""
+    if kind == 'v2' and has_v2(subset):
+        models = []
+        for i in range(V2_SEEDS):
+            m = pdm.CNNLSTMAttention(len(pdm.SENSORS))
+            m.load_state_dict(torch.load(os.path.join(V2_DIR, f'{subset}_seed{i}.pt'), map_location='cpu'))
+            models.append(m.eval())
+        return models
     path = os.path.join(MODEL_DIR, f'cnn_lstm_att_{subset}.pt')
     model = pdm.CNNLSTMAttention(len(pdm.SENSORS))
     if os.path.exists(path):
@@ -84,7 +111,7 @@ def get_model(subset):
         os.makedirs(MODEL_DIR, exist_ok=True)
         torch.save(model.state_dict(), path)
     model.eval()
-    return model
+    return [model]
 
 
 @st.cache_data(show_spinner=False)
@@ -111,16 +138,19 @@ def engine_windows(scaled):
     return X, pad
 
 
-def predict(model, X):
+def predict(models, X):
+    """Average the ensemble's predictions and attention weights (one model: no change)."""
+    ps, atts = [], []
     with torch.no_grad():
-        p = model(torch.from_numpy(X)).numpy() * Y_SCALE
-        att = model.last_attention.numpy()
-    return np.clip(p, 0, None), att
+        for m in models:
+            ps.append(m(torch.from_numpy(X)).numpy() * Y_SCALE)
+            atts.append(m.last_attention.numpy())
+    return np.clip(np.mean(ps, axis=0), 0, None), np.mean(atts, axis=0)
 
 
 @st.cache_data(show_spinner=False)
-def fleet_predictions(subset):
-    model, (test, _), scale = get_model(subset), load_test(subset), scaler(subset)
+def fleet_predictions(subset, kind='v1'):
+    model, (test, _), scale = get_model(subset, kind), load_test(subset), scaler(subset, kind)
     last = [engine_windows(scale(g))[0][-1] for _, g in test.groupby('unit')]
     return predict(model, np.stack(last))[0]
 
@@ -206,9 +236,14 @@ with st.container(key='nav'):
             picked = st.segmented_control('Appearance', ui.LOOKS, default=look, key='look_pick', width='stretch')
             red = st.slider('Critical at or below', 5, 60, 25, format='%d cycles')
             amber = st.slider('Plan maintenance at or below', red + 5, 125, max(red + 5, 60), format='%d cycles')
-            st.caption('CNN-LSTM with additive attention, seed 0, trained on NASA C-MAPSS. Remaining life is capped '
-                       'at 125 cycles. Drift compares each sensor’s last 10 cycles with its first 30 across all '
-                       'training engines. A cycle is one flight.')
+            MODEL_NAMES = {'v2': 'EnginePulse v2', 'v1': 'Report model'}
+            kinds = ['v2', 'v1'] if has_v2(subset) else ['v1']
+            kind = st.segmented_control('Model', kinds, default=kinds[0], format_func=MODEL_NAMES.get,
+                                        key=f'model_pick_{subset}', width='stretch') or kinds[0]
+            st.caption('EnginePulse v2 averages five CNN-LSTM + attention models trained on smoothed sensors. '
+                       'The report model is the single seed-0 model behind the figures in the report. '
+                       'Remaining life is capped at 125 cycles. Drift compares each sensor’s last 10 cycles with '
+                       'its first 30 across all training engines. A cycle is one flight.')
 if picked and picked != look:
     look = picked
     st.query_params['look'] = look
@@ -218,15 +253,15 @@ components.html(ui.theme_sync_html(t['dark']), height=0)
 with c_mark:
     st.markdown(ui.mark_html(t, subset), unsafe_allow_html=True)
 
-if not os.path.exists(os.path.join(MODEL_DIR, f'cnn_lstm_att_{subset}.pt')):
+if kind == 'v1' and not os.path.exists(os.path.join(MODEL_DIR, f'cnn_lstm_att_{subset}.pt')):
     with st.spinner(f'First run for {subset}: training the model once (1-3 minutes). It is saved afterwards.'):
         get_model(subset)
 
-model = get_model(subset)
+model = get_model(subset, kind)
 test, true_rul = load_test(subset)
-scale = scaler(subset)
+scale = scaler(subset, kind)
 mu, sd = healthy_baseline(subset)
-fleet_pred = fleet_predictions(subset)
+fleet_pred = fleet_predictions(subset, kind)
 true_capped = np.minimum(true_rul, CAP)
 fleet = pd.DataFrame({'Engine': np.arange(1, len(fleet_pred) + 1), 'Predicted': np.round(fleet_pred).astype(int),
                       'Actual': true_rul.astype(int)})
