@@ -156,6 +156,53 @@ p, li { font-size: 14px; }
 [data-testid="stElementContainer"]:has(> div > iframe[height="0"]),
 [data-testid="stElementContainer"]:has(iframe[height="0"]) { display: none; }
 
+
+/* Title card */
+.st-key-card-title { padding-bottom: 6px; }
+.ehm-hero .top { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+.ehm-hero h1 { margin: 0; }
+.ehm-hero p.lede { margin: 6px 0 0; color: var(--muted); font-size: 15px; line-height: 22px; max-width: 70ch; }
+.ehm-hero .meta { text-align: right; font-size: 12px; line-height: 18px; color: var(--muted); white-space: nowrap; padding-top: 4px; }
+.ehm-hbar { display: flex; gap: 2px; height: 10px; margin: 20px 0 14px; border-radius: 5px; overflow: hidden; background: var(--raised); }
+.ehm-hbar i { display: block; height: 100%; transition: opacity 150ms ease; }
+.ehm-hlegend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ehm-hlegend div { transition: opacity 150ms ease; }
+.ehm-hlegend b { display: block; font-size: 24px; line-height: 30px; font-weight: 500; color: var(--text); letter-spacing: -0.01em; }
+.ehm-hlegend span { display: block; font-size: 13px; color: var(--text); }
+.ehm-hlegend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 7px;
+  background: var(--dot); vertical-align: 1px; }
+.ehm-hlegend em { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 1px; }
+@media (hover: hover) and (pointer: fine) {
+  .ehm-hero:has(.ehm-hbar i:hover) .ehm-hbar i:not(:hover) { opacity: .35; }
+  .ehm-hero:has(.ehm-hlegend div:hover) .ehm-hlegend div:not(:hover) { opacity: .45; }
+  .ehm-hero:has(.ehm-hlegend div:nth-child(1):hover) .ehm-hbar i:not(:nth-child(1)),
+  .ehm-hero:has(.ehm-hlegend div:nth-child(2):hover) .ehm-hbar i:not(:nth-child(2)),
+  .ehm-hero:has(.ehm-hlegend div:nth-child(3):hover) .ehm-hbar i:not(:nth-child(3)),
+  .ehm-hero:has(.ehm-hbar i:nth-child(1):hover) .ehm-hlegend div:not(:nth-child(1)),
+  .ehm-hero:has(.ehm-hbar i:nth-child(2):hover) .ehm-hlegend div:not(:nth-child(2)),
+  .ehm-hero:has(.ehm-hbar i:nth-child(3):hover) .ehm-hlegend div:not(:nth-child(3)) { opacity: .35; }
+}
+.st-key-card-title [data-testid="stExpander"] { margin-top: 10px; }
+.st-key-card-title [data-testid="stExpander"] details { border: 0 !important; border-top: 1px solid var(--rule) !important;
+  border-radius: 0 !important; background: transparent !important; }
+.st-key-card-title [data-testid="stExpander"] summary { padding: 14px 0 6px !important; background: transparent !important; }
+.st-key-card-title [data-testid="stExpander"] summary:hover p { color: var(--text); }
+.st-key-card-title [data-testid="stExpander"] summary p { font-size: 14px; font-weight: 600; }
+.st-key-card-title [data-testid="stExpanderDetails"] { padding: 0 0 6px !important; }
+
+/* Plain-words summary */
+[data-testid="stMarkdownContainer"] table.ehm-sum, [data-testid="stMarkdownContainer"] table.ehm-sum :is(tr, th, td) {
+  border-left: 0 !important; border-right: 0 !important; border-bottom: 0 !important; background: transparent; }
+[data-testid="stMarkdownContainer"] table.ehm-sum { border: 0 !important; margin: 0; }
+[data-testid="stMarkdownContainer"] table.ehm-sum thead th { border-top: 0 !important; }
+.ehm-sum { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 21px; }
+.ehm-sum th { font-weight: 400; font-size: 12px; color: var(--muted); text-align: left; padding: 4px 20px 8px 0; }
+.ehm-sum td { padding: 12px 20px 12px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+.ehm-sum td.q { color: var(--muted); width: 24%; }
+.ehm-sum td.a { color: var(--text); width: 46%; }
+.ehm-sum td.n { color: var(--muted); font-size: 13px; padding-right: 0; }
+.ehm-sum tr { transition: background-color 150ms ease; }
+@media (hover: hover) and (pointer: fine) { .ehm-sum tbody tr:hover { background: var(--stage); } }
 @media (max-width: 640px) {
   .block-container { padding: 4.2rem 1rem 3rem; }
   .ehm-kpis { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
@@ -163,6 +210,10 @@ p, li { font-size: 14px; }
   .ehm-kpis > div:nth-child(-n+2) { border-top: 0; }
   .ehm-kpis > div:nth-child(even) { border-left: 1px solid var(--border); }
   .ehm-kpis > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .ehm-hero .top { flex-direction: column; gap: 8px; } .ehm-hero .meta { text-align: left; }
+  .ehm-hlegend { grid-template-columns: 1fr; gap: 10px; }
+  .ehm-sum thead { display: none; } .ehm-sum tr { display: block; border-top: 1px solid var(--rule); padding: 10px 0; }
+  .ehm-sum td { display: block; border: 0; padding: 2px 0; width: auto !important; }
 }
 </style>
 """
@@ -204,6 +255,26 @@ def kpis(cells):
         c = f'<em>{caption}</em>' if caption else ''
         out.append(f'<div><label>{label}</label><strong>{value}{u}</strong>{c}</div>')
     return f'<div class="ehm-kpis">{"".join(out)}</div>'
+
+
+def title_card(t, title, sentence, segments, meta):
+    """segments: (status, count, plain action, threshold words)."""
+    total = sum(c for _, c, _, _ in segments) or 1
+    bar = ''.join(f'<i style="width:{c / total * 100:.3f}%;background:{t["status"][k]}" title="{c} {k.lower()}"></i>'
+                  for k, c, _, _ in segments if c)
+    legend = ''.join(f'<div style="--dot:{t["status"][k]}"><b>{c}</b><span>{k}: {action}</span><em>{words}</em></div>'
+                     for k, c, action, words in segments)
+    m = '<br>'.join(meta)
+    return (f'<div class="ehm-hero"><div class="top"><div><h1>{title}</h1><p class="lede">{sentence}</p></div>'
+            f'<div class="meta">{m}</div></div><div class="ehm-hbar" role="img" aria-label="'
+            + ', '.join(f'{c} {k.lower()}' for k, c, _, _ in segments)
+            + f'">{bar}</div><div class="ehm-hlegend">{legend}</div></div>')
+
+
+def summary_table(rows):
+    body = ''.join(f'<tr><td class="q">{q}</td><td class="a">{a}</td><td class="n">{n}</td></tr>' for q, a, n in rows)
+    return ('<table class="ehm-sum"><thead><tr><th>Question</th><th>In plain words</th><th>The numbers behind it</th>'
+            f'</tr></thead><tbody>{body}</tbody></table>')
 
 
 def kv(rows):

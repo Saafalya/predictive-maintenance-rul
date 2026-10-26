@@ -134,6 +134,31 @@ def station_drift(g, mu, sd):
     return out, z
 
 
+# The fault NASA simulated in each fleet (Saxena et al., 2008)
+FAULT = {'FD001': (['HPC'], 'the high-pressure compressor'),
+         'FD003': (['HPC', 'Fan'], 'the high-pressure compressor and the fan')}
+
+
+@st.cache_data(show_spinner=False)
+def fleet_drift(subset):
+    test, _ = load_test(subset)
+    mu, sd = healthy_baseline(subset)
+    return pd.DataFrame.from_dict(
+        {int(u): {s: station_drift(g, mu, sd)[0][s]['drift'] for s in STATIONS} for u, g in test.groupby('unit')},
+        orient='index')
+
+
+def name_list(ids, show=3):
+    ids = [str(i) for i in ids]
+    if len(ids) <= show + 1:
+        return ids[0] if len(ids) == 1 else ', '.join(ids[:-1]) + ' and ' + ids[-1]
+    return ', '.join(ids[:show]) + f' and {len(ids) - show} others'
+
+
+def plural(n, one, many):
+    return f'{n} {one if n == 1 else many}'
+
+
 def status(rul, red, amber):
     if rul <= red:
         return 'Critical', 'Ground the engine and schedule a shop visit now.'
@@ -192,12 +217,77 @@ n_ok = int((fleet['Status'] == 'Healthy').sum())
 assert n_crit + n_plan + n_ok == len(fleet)
 lowest = fleet.sort_values('Predicted').iloc[0]
 
-# ---------------------------------------------------------------- title row
-st.markdown(
-    f'<div class="ehm-title"><h1>Fleet {subset}</h1><p>{len(fleet)} engines in the test set. '
-    f'<b>{n_crit}</b> are at or below the critical threshold of {red} cycles; '
-    f'engine {int(lowest.Engine)} has the least life left, {int(lowest.Predicted)} cycles.</p></div>',
-    unsafe_allow_html=True)
+# ---------------------------------------------------------------- title card
+urgent = fleet.sort_values(['Predicted', 'Engine'])
+crit_ids = urgent[urgent['Status'] == 'Critical']['Engine'].tolist()
+plan_ids = urgent[urgent['Status'] == 'Plan maintenance']['Engine'].tolist()
+err = fleet_pred - true_capped
+rmse, mae = pdm.rmse(fleet_pred, true_capped), float(np.mean(np.abs(err)))
+near = true_capped < 50
+rmse_near = pdm.rmse(fleet_pred[near], true_capped[near]) if near.any() else float('nan')
+n_late = int((np.round(fleet_pred) > np.round(true_capped)).sum())
+n_early = int((np.round(fleet_pred) < np.round(true_capped)).sum())
+
+sentence = (f'{len(fleet)} engines checked: {n_crit} should stop flying now, {n_plan} need a shop visit soon '
+            f'and {n_ok} are fine. Engine {int(lowest.Engine)} is the most urgent, with about '
+            f'{plural(int(lowest.Predicted), "flight", "flights")} left.')
+segments = [('Critical', n_crit, 'stop flying now', f'{red} flights or fewer left'),
+            ('Plan maintenance', n_plan, 'book a shop visit', f'{red + 1} to {amber} flights left'),
+            ('Healthy', n_ok, 'keep flying', f'more than {amber} flights left')]
+
+# Plain-words summary, every line computed from the numbers on this page
+share_ok = n_ok / len(fleet)
+overall = ('Most engines are in good shape.' if share_ok >= 0.75 else
+           'More than half the engines can keep flying normally.' if share_ok >= 0.5 else
+           'Fewer than half the engines can keep flying normally; the fleet needs attention.')
+fd = fleet_drift(subset)
+crit_drift = fd.loc[crit_ids] if crit_ids else fd.loc[urgent['Engine'].head(10)]
+by_station = crit_drift.abs().mean().sort_values(ascending=False)
+top = by_station.index[0]
+expected, expected_words = FAULT[subset]
+matches = top in expected
+wear = (f'In the engines closest to failure, the {STATION_NAME[top]} has changed the most. '
+        + ('That matches the fault NASA built into this fleet, so the model is picking up the right signal.'
+           if matches else f'NASA built its fault into {expected_words}, which also shows clear change.'))
+late_words = ('It guesses a little late more often than early, so keep a safety margin.' if n_late > n_early else
+              'It guesses early at least as often as late, which errs on the side of caution.')
+summary = [
+    ('How is the fleet doing?', overall,
+     f'{n_ok} healthy, {n_plan} plan maintenance, {n_crit} critical, of {len(fleet)}'),
+    ('Which engines should stop flying now?',
+     (f'Engines {name_list(crit_ids)} are close to the end of their safe life.' if len(crit_ids) > 1 else
+      f'Engine {crit_ids[0]} is close to the end of its safe life.' if crit_ids else
+      'None right now. No engine is inside the critical limit.'),
+     f'{red} cycles or fewer predicted' + (f'; lowest is engine {crit_ids[0]} at {int(lowest.Predicted)}' if crit_ids else '')),
+    ('Which ones need a visit soon?',
+     (f'{plural(n_plan, "engine", "engines")} should be booked in for a check in the coming weeks: {name_list(plan_ids)}.'
+      if plan_ids else 'None. Every engine is either critical or comfortably healthy.'),
+     f'{red + 1} to {amber} cycles predicted'),
+    ('Where is the wear showing?', wear,
+     'Average drift in ' + ('critical' if crit_ids else 'the 10 most urgent') + ' engines: '
+     + ', '.join(f'{k} {by_station[k]:.1f}σ' for k in by_station.index[:3])),
+    ('How far off are the predictions?',
+     f'Usually within about {round(mae)} flights. They get sharper as an engine nears failure.',
+     f'Average error {mae:.1f}, RMSE {rmse:.1f} cycles; RMSE {rmse_near:.1f} when under 50 remain'),
+    ('Does it guess early or late?', late_words,
+     f'Late on {n_late}, early on {n_early}, exact on {len(fleet) - n_late - n_early} engines'),
+    ('What should we do next?',
+     ' '.join(x for x in [
+         f'Ground {plural(n_crit, "engine", "engines")} and inspect the {STATION_NAME[top]}'
+         + (f' and {STATION_NAME[by_station.index[1]]}' if len(by_station) > 1 else '') + ' first.' if n_crit else '',
+         f'Book shop visits for {plural(n_plan, "other", "others")}.' if n_plan else '',
+         'Keep monitoring the rest.'] if x),
+     'Download a work order for any engine from Check an engine'),
+]
+assert n_crit + n_plan + n_ok == len(fleet) and n_late + n_early <= len(fleet)
+
+with st.container(border=True, key='card-title'):
+    st.markdown(ui.title_card(t, f'Fleet {subset}', sentence, segments,
+                              [f'NASA C-MAPSS {subset}', 'CNN-LSTM + attention model']), unsafe_allow_html=True)
+    with st.expander('Summary in plain words', expanded=True):
+        st.markdown(ui.summary_table(summary), unsafe_allow_html=True)
+        st.caption('Written automatically from the model’s predictions and the sensor data on this page. '
+                   'It updates when you change the fleet or the thresholds. A cycle is one flight.')
 
 tab_engine, tab_fleet, tab_upload, tab_models = st.tabs(
     ['Check an engine', 'Fleet board', 'Score your own data', 'Model comparison'])
@@ -321,15 +411,6 @@ with tab_engine:
 
 # ---------------------------------------------------------------- fleet board
 with tab_fleet:
-    rmse = pdm.rmse(fleet_pred, true_capped)
-    st.markdown(ui.kpis([
-        ('Engines', f'{len(fleet)}', '', 'in the test set'),
-        ('Critical', f'{n_crit}', '', f'at or below {red} cycles'),
-        ('Plan maintenance', f'{n_plan}', '', f'{red + 1} to {amber} cycles'),
-        ('Healthy', f'{n_ok}', '', f'above {amber} cycles'),
-        ('Test error (RMSE)', f'{rmse:.2f}', 'cycles', 'against actual, capped at 125'),
-    ]), unsafe_allow_html=True)
-    st.write('')
     with st.container(border=True, key='card-6'):
         st.markdown('### Every engine, most urgent first')
         board = fleet.sort_values(['Predicted', 'Engine'])
