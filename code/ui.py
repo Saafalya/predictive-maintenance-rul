@@ -7,13 +7,27 @@ INK, SLATE, TEAL = '#1B2B3A', '#5D6B78', '#0E7C86'
 FUSELAGE, PANEL, RULE = '#E8ECEF', '#F7F9FA', '#CBD3DA'
 STATUS = {'Critical': '#C8371D', 'Plan maintenance': '#D99A0B', 'Healthy': '#2E8B57'}
 
-# Fonts ship with the app (code/static/fonts, SIL Open Font License) so it works offline.
-FONT_FACES = ''.join(
-    f"@font-face{{font-family:'{fam}';font-style:normal;font-weight:{w};font-display:swap;"
-    f"src:url('/app/static/fonts/{file}-latin-{w}-normal.woff2') format('woff2');}}"
-    for fam, file, weights in [('Barlow', 'barlow', (400, 500, 600)),
-                               ('Barlow Condensed', 'barlow-condensed', (500, 600, 700))]
-    for w in weights)
+# Fonts ship with the app (code/static/fonts, SIL Open Font License) and are embedded
+# as data URIs, so the site works offline and needs no static file server.
+import base64
+import os
+_FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'fonts')
+
+
+def _face(fam, file, w):
+    path = os.path.join(_FONT_DIR, f'{file}-latin-{w}-normal.woff2')
+    try:
+        src = 'data:font/woff2;base64,' + base64.b64encode(open(path, 'rb').read()).decode()
+    except OSError:
+        return ''
+    return (f"@font-face{{font-family:'{fam}';font-style:normal;font-weight:{w};font-display:swap;"
+            f"src:url({src}) format('woff2');}}")
+
+
+FONT_FACES = ''.join(_face(fam, file, w)
+                     for fam, file, weights in [('Barlow', 'barlow', (400, 500, 600)),
+                                                ('Barlow Condensed', 'barlow-condensed', (500, 600, 700))]
+                     for w in weights)
 
 CSS = f"""
 <style>
