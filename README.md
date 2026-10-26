@@ -72,7 +72,7 @@ It opens at http://localhost:8501 and has four tabs:
 - **Try your own data**: upload a C-MAPSS-format sensor file and download predictions.
 - **Model comparison**: the five-model results from `results/results.json`.
 
-The maintenance thresholds are adjustable in the sidebar. The site uses the saved models in `models/`; if they are missing it trains them once on first launch.
+The page uses the Barlow and Barlow Condensed typefaces (SIL Open Font License), bundled in `code/static/fonts` so the site works offline. The maintenance thresholds are adjustable in the sidebar. The site uses the saved models in `models/`; if they are missing it trains them once on first launch.
 
 ## Dataset
 

@@ -12,9 +12,11 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import torch
 
 import pdm
+import ui
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 MODEL_DIR = os.path.join(ROOT, 'models')
@@ -30,6 +32,7 @@ SENSOR_NAMES = {
 }
 
 st.set_page_config(page_title='Engine Health Monitor', page_icon='✈️', layout='wide')
+st.markdown(ui.CSS, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- data + model
@@ -99,24 +102,25 @@ def fleet_predictions(subset):
 
 def status(rul, red, amber):
     if rul <= red:
-        return 'Critical', '#c0392b', 'Ground the engine and service it now.'
+        return 'Critical', ui.STATUS['Critical'], 'Ground the engine and service it now.'
     if rul <= amber:
-        return 'Plan maintenance', '#d68910', 'Book maintenance in the next few weeks.'
-    return 'Healthy', '#1e8449', 'No action needed. Keep monitoring.'
+        return 'Plan maintenance', ui.STATUS['Plan maintenance'], 'Book maintenance in the next few weeks.'
+    return 'Healthy', ui.STATUS['Healthy'], 'No action needed. Keep monitoring.'
 
 
 # ---------------------------------------------------------------- sidebar
-st.sidebar.title('✈️ Engine Health Monitor')
-st.sidebar.caption('Predicts remaining useful life (RUL) of turbofan engines from NASA C-MAPSS sensor data.')
+st.sidebar.header('Settings')
 subset = st.sidebar.radio('Engine fleet', ['FD001', 'FD003'],
-                          format_func=lambda s: {'FD001': 'FD001 · one fault type',
-                                                 'FD003': 'FD003 · two fault types'}[s])
-st.sidebar.markdown('**Maintenance thresholds** (cycles left)')
+                          format_func=lambda s: {'FD001': 'FD001, one fault type',
+                                                 'FD003': 'FD003, two fault types'}[s])
+st.sidebar.markdown('**Maintenance thresholds**, in cycles left')
 red = st.sidebar.slider('Critical at or below', 5, 60, 25)
 amber = st.sidebar.slider('Plan maintenance at or below', red + 5, 125, max(red + 5, 60))
 st.sidebar.divider()
-st.sidebar.caption('Model: CNN-LSTM with additive attention (seed 0). '
+st.sidebar.caption('Model: CNN-LSTM with additive attention, seed 0. Data: NASA C-MAPSS. '
                    'Predictions are capped at 125 cycles, same as in training.')
+
+st.markdown(ui.header_html(), unsafe_allow_html=True)
 
 if not os.path.exists(os.path.join(MODEL_DIR, f'cnn_lstm_att_{subset}.pt')):
     with st.spinner(f'First run for {subset}: training the model once (1-3 minutes). It is saved afterwards.'):
@@ -129,16 +133,14 @@ fleet_pred = fleet_predictions(subset)
 true_capped = np.minimum(true_rul, CAP)
 
 tab_engine, tab_fleet, tab_upload, tab_models = st.tabs(
-    ['🔧 Check an engine', '📋 Fleet overview', '📤 Try your own data', '📊 Model comparison'])
+    ['Check an engine', 'Fleet overview', 'Try your own data', 'Model comparison'])
 
 # ---------------------------------------------------------------- engine tab
 with tab_engine:
     units = sorted(test['unit'].unique())
-    c1, c2 = st.columns([1, 3])
-    with c1:
-        longest = int(test.groupby('unit').size().idxmax())
-        unit = st.selectbox('Test engine', units, index=units.index(longest),
-                            format_func=lambda u: f'Engine {u}')
+    longest = int(test.groupby('unit').size().idxmax())
+    unit = st.selectbox('Test engine', units, index=units.index(longest),
+                        format_func=lambda u: f'Engine {u}')
     g = test[test['unit'] == unit]
     X, padded = engine_windows(scale(g))
     preds, att = predict(model, X)
@@ -146,20 +148,20 @@ with tab_engine:
     t_now = float(true_rul[unit - 1])
     label, color, advice = status(p_now, red, amber)
 
-    with c2:
-        st.markdown(
-            f"<div style='padding:14px 18px;border-radius:10px;background:{color}1a;border-left:6px solid {color}'>"
-            f"<span style='font-size:1.3rem;font-weight:600;color:{color}'>{label}</span><br>"
-            f"<span>{advice}</span></div>", unsafe_allow_html=True)
-
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric('Predicted cycles left', f'{p_now:.0f}')
-    m2.metric('Actual cycles left', f'{t_now:.0f}',
-              help='From NASA’s answer file. Values above 125 are shown in full here but the model caps at 125.')
-    err = p_now - min(t_now, CAP)
-    m3.metric('Error vs. capped actual', f'{err:+.0f}',
-              help='Positive = predicted too late (riskier). Negative = predicted too early.')
-    m4.metric('Cycles observed so far', len(g))
+    dial, info = st.columns([1, 1.35], gap='large')
+    with dial:
+        components.html(ui.gauge_html(p_now, t_now, red, amber, CAP), height=360)
+    with info:
+        st.markdown(ui.status_html(label, advice), unsafe_allow_html=True)
+        m1, m2 = st.columns(2)
+        m1.metric('Predicted cycles left', f'{p_now:.0f}')
+        m2.metric('Actual cycles left', f'{t_now:.0f}',
+                  help='From NASA’s answer file. The model caps at 125, so values above that are compared as 125.')
+        m3, m4 = st.columns(2)
+        err = p_now - min(t_now, CAP)
+        m3.metric('Prediction error', f'{err:+.0f}',
+                  help='Positive means it predicted failure too late, which is the riskier direction.')
+        m4.metric('Cycles flown so far', len(g))
 
     st.subheader('How the prediction changed over this engine’s life')
     cycles = g['cycle'].values[-len(preds):] if not padded else g['cycle'].values[-1:]
@@ -171,19 +173,19 @@ with tab_engine:
         x0 -= 1
     bands = pd.DataFrame({'x0': [x0] * 3, 'x1': [x1] * 3,
                           'y0': [0, red, amber], 'y1': [red, amber, CAP + 10],
-                          'zone': ['#c0392b', '#d68910', '#1e8449']})
+                          'zone': list(ui.STATUS.values())})
     zone = alt.Chart(bands).mark_rect(opacity=0.09).encode(
         x=alt.X('x0:Q', title='Cycle'), x2='x1:Q', y=alt.Y('y0:Q', title='Cycles left'), y2='y1:Q', color=alt.Color('zone:N', scale=None))
     lines = alt.Chart(long).mark_line(point=len(cycles) < 40, strokeWidth=2.5).encode(
         x=alt.X('Cycle:Q', title='Cycle', scale=alt.Scale(zero=False)),
         y=alt.Y('RUL:Q', title='Cycles left', scale=alt.Scale(domain=[0, CAP + 10])),
         color=alt.Color('Series:N', scale=alt.Scale(domain=['Predicted RUL', 'Actual RUL (capped)'],
-                                                    range=['#7b241c', '#566573']),
+                                                    range=[ui.TEAL, ui.INK]),
                         legend=alt.Legend(orient='top', title=None)),
         strokeDash=alt.StrokeDash('Series:N', scale=alt.Scale(domain=['Predicted RUL', 'Actual RUL (capped)'],
                                                               range=[[1, 0], [6, 4]]), legend=None),
         tooltip=['Cycle', 'Series', alt.Tooltip('RUL:Q', format='.0f')])
-    st.altair_chart((zone + lines).resolve_scale(color='independent').properties(height=320), width='stretch')
+    st.altair_chart(ui.styled((zone + lines).resolve_scale(color='independent').properties(height=320)), width='stretch')
     st.caption('Shaded bands show the critical (red), plan-maintenance (amber) and healthy (green) zones.')
     if padded:
         st.info('This engine has fewer than 30 recorded cycles, so only one prediction could be made.')
@@ -193,21 +195,21 @@ with tab_engine:
         st.subheader('Sensor readings')
         default = ['s4', 's11']
         chosen = st.multiselect('Sensors', pdm.SENSORS, default=default,
-                                format_func=lambda s: f'{s} · {SENSOR_NAMES.get(s, s)}')
+                                format_func=lambda s: f'{SENSOR_NAMES.get(s, s)} ({s})')
         for s in chosen:
-            st.altair_chart(alt.Chart(g).mark_line(color='#34495e').encode(
+            st.altair_chart(ui.styled(alt.Chart(g).mark_line(color=ui.INK, strokeWidth=1.4).encode(
                 x=alt.X('cycle:Q', title='Cycle'),
                 y=alt.Y(f'{s}:Q', title=None, scale=alt.Scale(zero=False)),
-                tooltip=['cycle', s]).properties(height=140, title=f'{s} · {SENSOR_NAMES.get(s, s)}'),
-                width='stretch')
+                tooltip=['cycle', s]).properties(height=140, title=f'{SENSOR_NAMES.get(s, s)} ({s})')
+                ), width='stretch')
     with right:
         st.subheader('Where the model looked')
         a = pd.DataFrame({'Cycles ago': np.arange(WINDOW - 1, -1, -1), 'Attention': att[-1]})
-        st.altair_chart(alt.Chart(a).mark_bar(color='#7b241c').encode(
+        st.altair_chart(ui.styled(alt.Chart(a).mark_bar(color=ui.TEAL).encode(
             x=alt.X('Cycles ago:O', sort='descending', title='Cycles ago (0 = latest)'),
             y=alt.Y('Attention:Q', title='Attention weight'),
-            tooltip=['Cycles ago', alt.Tooltip('Attention', format='.3f')]).properties(height=260),
-            width='stretch')
+            tooltip=['Cycles ago', alt.Tooltip('Attention', format='.3f')]).properties(height=260)
+            ), width='stretch')
         st.caption(f'The model put {att[-1][-1]:.0%} of its attention on the latest cycle '
                    f'and {att[-1][-5:].sum():.0%} on the last five.')
 
@@ -225,17 +227,26 @@ with tab_fleet:
     k3.metric('Plan maintenance', int((df['Status'] == 'Plan maintenance').sum()))
     k4.metric('Test RMSE', f'{rmse:.2f}', help='Average size of the error in cycles, on the 100 test engines.')
 
+    st.subheader('Hangar board')
+    st.caption('Every test engine, most urgent first. The coloured fill shows predicted life left. '
+               'Hover over or tab to an engine for its numbers.')
+    board = df.sort_values('Predicted RUL')
+    components.html(ui.hangar_html([{'Engine': int(r.Engine), 'Predicted': int(r['Predicted RUL']),
+                                     'Actual': int(r['Actual RUL']), 'Status': r.Status}
+                                    for _, r in board.iterrows()]),
+                    height=-(-len(board) // 12) * 68 + 16, scrolling=False)
+
     sc = alt.Chart(df.assign(Capped=true_capped)).mark_circle(size=60, opacity=0.75).encode(
         x=alt.X('Capped:Q', title='Actual RUL (capped at 125)'),
         y=alt.Y('Predicted RUL:Q', title='Predicted RUL'),
         color=alt.Color('Status:N', scale=alt.Scale(domain=['Critical', 'Plan maintenance', 'Healthy'],
-                                                    range=['#c0392b', '#d68910', '#1e8449'])),
+                                                    range=list(ui.STATUS.values()))),
         tooltip=['Engine', 'Predicted RUL', 'Actual RUL', 'Status'])
     diag = alt.Chart(pd.DataFrame({'x': [0, CAP], 'y': [0, CAP]})).mark_line(
         color='#999', strokeDash=[4, 4]).encode(x=alt.X('x:Q', title='Actual RUL (capped at 125)'), y=alt.Y('y:Q', title='Predicted RUL'))
     st.subheader('Predicted vs. actual')
     st.caption('Points on the dashed line are perfect predictions. Above the line = predicted too late.')
-    st.altair_chart((diag + sc).properties(height=380), width='stretch')
+    st.altair_chart(ui.styled((diag + sc).properties(height=380)), width='stretch')
 
     st.subheader('All engines')
     only = st.multiselect('Show', ['Critical', 'Plan maintenance', 'Healthy'],
@@ -285,11 +296,11 @@ with tab_models:
         bar = alt.Chart(t).mark_bar().encode(
             x=alt.X('rmse_mean:Q', title='Test RMSE (cycles)'),
             y=alt.Y('Model:N', sort=order, title=None, axis=alt.Axis(labelLimit=200)),
-            color=alt.condition(alt.datum.Model == 'CNN-LSTM + Attention', alt.value('#7b241c'), alt.value('#aab7b8')),
+            color=alt.condition(alt.datum.Model == 'CNN-LSTM + Attention', alt.value(ui.TEAL), alt.value('#AEBAC4')),
             tooltip=['Model', 'RMSE', 'PHM08 score'])
         err = alt.Chart(t).mark_errorbar().encode(
             x=alt.X('lo:Q', title='Test RMSE (cycles)'), x2='hi:Q', y=alt.Y('Model:N', sort=order, title=None)).transform_calculate(
             lo='datum.rmse_mean - datum.rmse_std', hi='datum.rmse_mean + datum.rmse_std')
-        st.altair_chart((bar + err).properties(height=240), width='stretch')
+        st.altair_chart(ui.styled((bar + err).properties(height=240)), width='stretch')
     except Exception:
         st.warning('results/results.json not found or incomplete. Run the full experiment from start.bat first.')
