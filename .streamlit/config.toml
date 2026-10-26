@@ -3,7 +3,9 @@ gatherUsageStats = false
 
 [theme]
 base = "light"
-primaryColor = "#0E7C86"
-backgroundColor = "#E8ECEF"
-secondaryBackgroundColor = "#DDE3E8"
-textColor = "#1B2B3A"
+primaryColor = "#141414"
+backgroundColor = "#F2F4F7"
+secondaryBackgroundColor = "#ECEEF1"
+textColor = "#0A0A0A"
+borderColor = "#E3E6EA"
+font = "Geist, Segoe UI, sans-serif"

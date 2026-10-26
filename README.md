@@ -67,12 +67,14 @@ streamlit run code/app.py
 
 It opens at http://localhost:8501 and has four tabs:
 
-- **Check an engine**: pick a test engine to see its predicted cycles left, a maintenance call (healthy, plan maintenance, critical), how the prediction changed over its life, its raw sensor readings and where the attention layer looked.
-- **Fleet overview**: all 100 test engines, predicted vs. actual, sorted by urgency.
-- **Try your own data**: upload a C-MAPSS-format sensor file and download predictions.
+- **Check an engine**: the predicted cycles left on a dial, a maintenance call, and a **3D cutaway of the turbofan** you can turn with the mouse or arrow keys. Each station (fan, compressors, combustor, turbines) is tinted by how far its own sensors have drifted from a healthy engine; hover a station for its readings, or use *Exploded view* to pull the stations apart. Below it: the prediction over the engine's history, where the attention layer looked, and each sensor's history against its healthy baseline. *Download work order* saves a text work card for the engine.
+- **Fleet board**: every test engine sorted by urgency, predicted against actual, and the shop visit queue.
+- **Score your own data**: upload a C-MAPSS-format sensor file and download predictions.
 - **Model comparison**: the five-model results from `results/results.json`.
 
-The page uses the Barlow and Barlow Condensed typefaces (SIL Open Font License), bundled in `code/static/fonts` so the site works offline. The maintenance thresholds are adjustable in the sidebar. The site uses the saved models in `models/`; if they are missing it trains them once on first launch.
+Drift is the mean of a sensor's last 10 cycles compared with the mean and spread of the first 30 cycles of every training engine. Sensor names, units and stations follow Saxena et al. (2008).
+
+Bundled in `code/static`: the Geist typeface (SIL Open Font License) and three.js r149 (MIT), so the site works offline.
 
 ## Dataset
 
